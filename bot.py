@@ -1,4 +1,4 @@
-# Đoạn mã của Wyn, vui lòng không xoá dòng này để ủng hộ mình nha<3
+# Đoạn mã của Wyn, vui lòng không xoá dòng này để tôn trọng tác giả nha<3
 import telebot
 import google.generativeai as genai
 import PIL.Image
