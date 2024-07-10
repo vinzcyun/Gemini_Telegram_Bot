@@ -2,7 +2,6 @@ import telebot
 import google.generativeai as genai
 import PIL.Image
 import time
-from concurrent.futures import ThreadPoolExecutor
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 API_KEYS = [
@@ -29,7 +28,6 @@ training_instruction = (
 )
 
 user_histories = {}
-executor = ThreadPoolExecutor(max_workers=5)  # Sử dụng 5 luồng
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -52,11 +50,6 @@ def get_response_from_genai(prompt):
 
     return 'Dịch vụ không phản hồi, vui lòng thử lại sau.'
 
-def process_message(message, prompt):
-    response_text = get_response_from_genai(prompt)
-    bot.send_message(message.chat.id, response_text)
-    user_histories[message.from_user.id].append((prompt, response_text))
-
 @bot.message_handler(commands=['ask'])
 def handle_ask(message):
     user_id = message.from_user.id
@@ -70,7 +63,9 @@ def handle_ask(message):
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
 
-    executor.submit(process_message, message, full_prompt)
+    response_text = get_response_from_genai(full_prompt)
+    bot.send_message(message.chat.id, response_text)
+    user_histories[user_id].append((question, response_text))
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
@@ -92,7 +87,9 @@ def handle_reply(message):
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
 
-    executor.submit(process_message, message, full_prompt)
+    response_text = get_response_from_genai(full_prompt)
+    bot.send_message(message.chat.id, response_text)
+    user_histories[user_id].append((question, response_text))
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
@@ -127,7 +124,9 @@ def handle_private_message(message):
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
 
-    executor.submit(process_message, message, full_prompt)
+    response_text = get_response_from_genai(full_prompt)
+    bot.send_message(message.chat.id, response_text)
+    user_histories[user_id].append((question, response_text))
 
 while True:
     try:
