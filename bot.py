@@ -2,6 +2,7 @@
 import telebot
 import google.generativeai as genai
 import PIL.Image
+import requests
 import time
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
@@ -16,19 +17,27 @@ training_instruction = (
     "Bạn là một trợ lý ảo thông minh, có khả năng hiểu biết sâu rộng và phản hồi chính xác, "
     "nhanh chóng. Cố gắng trả lời ngắn gọn, đầy đủ và chi tiết nhất có thể. "
     "Bạn cũng có khả năng thể hiện sự đồng cảm và lịch sự trong mọi câu trả lời. "
-    "Khi được hỏi, hãy cung cấp thông tin một cách rõ ràng và dễ hiểu, tương tự như phiên bản GPT-4 của OpenAI."
+    "Khi được hỏi, hãy cung cấp thông tin một cách rõ ràng và dễ hiểu, tương tự như phiên bản GPT-4 của OpenAI. "
+    "Khi người dùng hỏi về VPS VNC, hãy truy cập API tại https://computernewb.com/vncresolver/api/scans/vnc/random "
+    "để lấy thông tin IP, port, clientname, username và password."
 )
 
-# Lưu trữ lịch sử trò chuyện
-chat_history = {}
-
-def update_chat_history(user_id, message):
-    if user_id not in chat_history:
-        chat_history[user_id] = []
-    chat_history[user_id].append(message)
-    # Chỉ lưu trữ 5 tin nhắn gần nhất
-    if len(chat_history[user_id]) > 5:
-        chat_history[user_id] = chat_history[user_id][-5:]
+# Hàm lấy thông tin VPS VNC từ API
+def get_random_vps_vnc():
+    try:
+        response = requests.get("https://computernewb.com/vncresolver/api/scans/vnc/random")
+        if response.status_code == 200:
+            data = response.json()
+            ip = data.get('ip', 'N/A')
+            port = data.get('port', 'N/A')
+            clientname = data.get('clientname', 'N/A')
+            username = data.get('username', 'N/A')
+            password = data.get('password', 'N/A')
+            return f"IP: {ip}, Port: {port}, Clientname: {clientname}, Username: {username}, Password: {password}"
+        else:
+            return "Không thể lấy thông tin VPS VNC vào lúc này. Vui lòng thử lại sau."
+    except Exception as e:
+        return "Đã xảy ra lỗi khi truy cập API VPS VNC."
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -37,7 +46,6 @@ def handle_start(message):
 
 @bot.message_handler(commands=['ask'])
 def handle_ask(message):
-    user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text[len('/ask '):].strip()
     if not question:
@@ -45,28 +53,26 @@ def handle_ask(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    update_chat_history(user_id, question)
-    history = ' | '.join(chat_history[user_id])
-    formatted_question = f"Lịch sử trò chuyện của đoạn chat trước là: {history}. Tôi tên là {first_name}. Tôi muốn nói: {question}"
-    full_prompt = f"{training_instruction} {formatted_question}"
-    model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
+    if "VPS VNC" in question:
+        vps_info = get_random_vps_vnc()
+        bot.send_message(message.chat.id, vps_info)
+    else:
+        formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
+        full_prompt = f"{training_instruction} {formatted_question}"
+        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
-    try:
-        response = model.generate_content([full_prompt])
-        bot.send_message(message.chat.id, response.text)
-    except Exception as e:
-        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+        try:
+            response = model.generate_content([full_prompt])
+            bot.send_message(message.chat.id, response.text)
+        except Exception as e:
+            bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
-    user_id = message.from_user.id
-    if user_id in chat_history:
-        del chat_history[user_id]
     bot.send_message(message.chat.id, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 def handle_reply(message):
-    user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
@@ -74,21 +80,22 @@ def handle_reply(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    update_chat_history(user_id, question)
-    history = ' | '.join(chat_history[user_id])
-    formatted_question = f"Lịch sử trò chuyện của đoạn chat trước là: {history}. Tôi tên là {first_name}. Tôi muốn nói: {question}"
-    full_prompt = f"{training_instruction} {formatted_question}"
-    model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
+    if "VPS VNC" in question:
+        vps_info = get_random_vps_vnc()
+        bot.send_message(message.chat.id, vps_info)
+    else:
+        formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
+        full_prompt = f"{training_instruction} {formatted_question}"
+        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
-    try:
-        response = model.generate_content([full_prompt])
-        bot.send_message(message.chat.id, response.text)
-    except Exception as e:
-        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+        try:
+            response = model.generate_content([full_prompt])
+            bot.send_message(message.chat.id, response.text)
+        except Exception as e:
+            bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    user_id = message.from_user.id
     file_id = message.photo[-1].file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -108,7 +115,6 @@ def handle_photo(message):
 
 @bot.message_handler(func=lambda message: message.chat.type == 'private' and not message.text.startswith('/'))
 def handle_private_message(message):
-    user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
@@ -116,17 +122,19 @@ def handle_private_message(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    update_chat_history(user_id, question)
-    history = ' | '.join(chat_history[user_id])
-    formatted_question = f"Lịch sử trò chuyện của đoạn chat trước là: {history}. Tôi tên là {first_name}. Tôi muốn nói: {question}"
-    full_prompt = f"{training_instruction} {formatted_question}"
-    model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
+    if "VPS VNC" in question:
+        vps_info = get_random_vps_vnc()
+        bot.send_message(message.chat.id, vps_info)
+    else:
+        formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
+        full_prompt = f"{training_instruction} {formatted_question}"
+        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
-    try:
-        response = model.generate_content([full_prompt])
-        bot.send_message(message.chat.id, response.text)
-    except Exception as e:
-        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+        try:
+            response = model.generate_content([full_prompt])
+            bot.send_message(message.chat.id, response.text)
+        except Exception as e:
+            bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 while True:
     try:
