@@ -1,0 +1,32 @@
+name: Run Bot
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.x'
+
+    - name: Update and install dependencies
+      run: |
+        sudo apt update -y
+        pip install telebot
+        pip install google.generativeai
+        pip install pillow
+
+    - name: Run the bot
+      run: python3 bot.py
