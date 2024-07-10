@@ -19,8 +19,8 @@ training_instruction = (
     "Khi được hỏi, hãy cung cấp thông tin một cách rõ ràng và dễ hiểu, tương tự như phiên bản GPT-4 của OpenAI."
 )
 
-# Lưu trữ lịch sử trò chuyện cho mỗi người dùng
-user_chats = {}
+# Dictionary lưu trữ lịch sử trò chuyện của người dùng
+user_histories = {}
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -32,33 +32,32 @@ def handle_ask(message):
     user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text[len('/ask '):].strip()
-    
     if not question:
         bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi sau lệnh /ask.')
         return
 
-    if user_id not in user_chats:
-        user_chats[user_id] = []
+    if user_id not in user_histories:
+        user_histories[user_id] = []
+    
+    user_histories[user_id].append(f"{first_name}: {question}")
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
-    user_chats[user_id].append(formatted_question)
-    
-    full_prompt = f"{training_instruction} {' '.join(user_chats[user_id])}"
+    full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
     try:
         response = model.generate_content([full_prompt])
-        user_chats[user_id].append(response.text)
         bot.send_message(message.chat.id, response.text)
+        user_histories[user_id].append(f"Hydra: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
     user_id = message.from_user.id
-    if user_id in user_chats:
-        user_chats[user_id] = []
+    if user_id in user_histories:
+        del user_histories[user_id]
     bot.send_message(message.chat.id, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
@@ -66,31 +65,31 @@ def handle_reply(message):
     user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text.strip()
-    
     if not question:
         bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi.')
         return
 
-    if user_id not in user_chats:
-        user_chats[user_id] = []
+    if user_id not in user_histories:
+        user_histories[user_id] = []
+
+    user_histories[user_id].append(f"{first_name}: {question}")
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
-    user_chats[user_id].append(formatted_question)
-    
-    full_prompt = f"{training_instruction} {' '.join(user_chats[user_id])}"
+    full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
     try:
         response = model.generate_content([full_prompt])
-        user_chats[user_id].append(response.text)
         bot.send_message(message.chat.id, response.text)
+        user_histories[user_id].append(f"Hydra: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
     user_id = message.from_user.id
+    first_name = message.from_user.first_name
     file_id = message.photo[-1].file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -105,6 +104,8 @@ def handle_photo(message):
     try:
         response = model.generate_content(["Đây là bức ảnh gì?", img])
         bot.send_message(message.chat.id, response.text)
+        user_histories[user_id].append(f"{first_name} đã gửi một bức ảnh.")
+        user_histories[user_id].append(f"Hydra: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
@@ -113,25 +114,24 @@ def handle_private_message(message):
     user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text.strip()
-    
     if not question:
         bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi.')
         return
 
-    if user_id not in user_chats:
-        user_chats[user_id] = []
+    if user_id not in user_histories:
+        user_histories[user_id] = []
+
+    user_histories[user_id].append(f"{first_name}: {question}")
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
-    user_chats[user_id].append(formatted_question)
-    
-    full_prompt = f"{training_instruction} {' '.join(user_chats[user_id])}"
+    full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
     try:
         response = model.generate_content([full_prompt])
-        user_chats[user_id].append(response.text)
         bot.send_message(message.chat.id, response.text)
+        user_histories[user_id].append(f"Hydra: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
