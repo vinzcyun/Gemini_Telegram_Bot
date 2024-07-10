@@ -112,4 +112,4 @@ while True:
         bot.polling(none_stop=True)
     except Exception as e:
         print(f"Bot gặp lỗi: {e}")
-        time.sleep(15)  # Đợi 15 giây trước khi thử lại
+        time.sleep(5)  # Đợi 15 giây trước khi thử lại
