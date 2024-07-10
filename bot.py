@@ -2,6 +2,7 @@
 import telebot
 import google.generativeai as genai
 import PIL.Image
+import time
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEY = 'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E'
@@ -9,9 +10,13 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
+# Cập nhật đoạn huấn luyện để Gemini AI giống GPT-4
 training_instruction = (
-    "Bạn tên là Hydra, được tạo ra bởi Wyn dựa trên API của Gemini AI với phiên bản Pro 1.5, "
-    "cố gắng trả lời một cách ngắn gọn, đầy đủ và chính xác nhất có thể, bạn là một người bạn của tất cả mọi người."
+    "Bạn tên là Hydra, được tạo ra bởi Wyn dựa trên API của Gemini AI với phiên bản Pro 1.5. "
+    "Bạn là một trợ lý ảo thông minh, có khả năng hiểu biết sâu rộng và phản hồi chính xác, "
+    "nhanh chóng. Cố gắng trả lời ngắn gọn, đầy đủ và chi tiết nhất có thể. "
+    "Bạn cũng có khả năng thể hiện sự đồng cảm và lịch sự trong mọi câu trả lời. "
+    "Khi được hỏi, hãy cung cấp thông tin một cách rõ ràng và dễ hiểu, tương tự như phiên bản GPT-4 của OpenAI."
 )
 
 @bot.message_handler(commands=['start'])
@@ -31,9 +36,16 @@ def handle_ask(message):
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-    response = model.generate_content([full_prompt])
 
-    bot.send_message(message.chat.id, response.text)
+    try:
+        response = model.generate_content([full_prompt])
+        bot.send_message(message.chat.id, response.text)
+    except Exception as e:
+        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+
+@bot.message_handler(commands=['clear'])
+def handle_clear(message):
+    bot.send_message(message.chat.id, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 def handle_reply(message):
@@ -47,9 +59,12 @@ def handle_reply(message):
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-    response = model.generate_content([full_prompt])
 
-    bot.send_message(message.chat.id, response.text)
+    try:
+        response = model.generate_content([full_prompt])
+        bot.send_message(message.chat.id, response.text)
+    except Exception as e:
+        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
@@ -63,9 +78,12 @@ def handle_photo(message):
     img = PIL.Image.open('received_photo.png')
     bot.send_chat_action(message.chat.id, 'typing')
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-    response = model.generate_content(["Đây là bức ảnh gì?", img])
 
-    bot.send_message(message.chat.id, response.text)
+    try:
+        response = model.generate_content(["Đây là bức ảnh gì?", img])
+        bot.send_message(message.chat.id, response.text)
+    except Exception as e:
+        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(func=lambda message: message.chat.type == 'private' and not message.text.startswith('/'))
 def handle_private_message(message):
@@ -79,8 +97,15 @@ def handle_private_message(message):
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-    response = model.generate_content([full_prompt])
 
-    bot.send_message(message.chat.id, response.text)
+    try:
+        response = model.generate_content([full_prompt])
+        bot.send_message(message.chat.id, response.text)
+    except Exception as e:
+        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
-bot.polling()
+while True:
+    try:
+        bot.polling(none_stop=True)
+    except Exception as e:
+        time.sleep(15)  # Đợi 15 giây trước khi thử lại
