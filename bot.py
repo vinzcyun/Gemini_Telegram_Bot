@@ -17,7 +17,7 @@ training_instruction = (
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     first_name = message.from_user.first_name
-    bot.send_message(message.chat.id, f'Xin chào, {first_name}! Tôi là Hydra, một trợ lý ảo thông minh được tạo ra bởi Wyn. Tôi có thể giúp bạn trả lời nhiều câu hỏi khác nhau, đa lĩnh vực. Hãy hỏi tôi bất cứ điều gì, tôi sẽ cố gắng để trả lời cho bạn')
+    bot.send_message(message.chat.id, f'Xin chào, {first_name}! Tôi là Hydra, một trợ lý ảo thông minh được tạo ra bởi Wyn. Tôi có thể giúp bạn trả lời nhiều câu hỏi khác nhau, đa lĩnh vực. Hãy hỏi tôi bất cứ điều gì, tôi sẽ cố gắng để trả lời cho bạn🥰🥰')
 
 @bot.message_handler(commands=['ask'])
 def handle_ask(message):
@@ -63,7 +63,7 @@ def handle_photo(message):
     img = PIL.Image.open('received_photo.png')
     bot.send_chat_action(message.chat.id, 'typing')
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-    response = model.generate_content(["What is in this photo?", img])
+    response = model.generate_content(["Đây là bức ảnh gì?", img])
     
     bot.send_message(message.chat.id, response.text)
 
