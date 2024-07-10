@@ -1,4 +1,3 @@
-# Đoạn mã của Wyn, vui lòng không xoá dòng này để tôn trọng tác giả nha<3
 import telebot
 import google.generativeai as genai
 import PIL.Image
@@ -10,6 +9,20 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 genai.configure(api_key=GOOGLE_API_KEY)
 
+# Dictionary để lưu trữ lịch sử trò chuyện
+gemini_player_dict = {}
+
+# Số lượng trò chuyện tối đa
+n = 200
+
+def store_conversation(user_id, model_type, message, response):
+    if model_type == 'gemini':
+        if user_id not in gemini_player_dict:
+            gemini_player_dict[user_id] = {"history": []}
+        gemini_player_dict[user_id]["history"].append({"message": message, "response": response})
+        if len(gemini_player_dict[user_id]["history"]) > n:
+            gemini_player_dict[user_id]["history"] = gemini_player_dict[user_id]["history"][-n:]
+
 # Cập nhật đoạn huấn luyện để Gemini AI giống GPT-4
 training_instruction = (
     "Bạn tên là Hydra, được tạo ra bởi Wyn dựa trên API của Gemini AI với phiên bản Pro 1.5. "
@@ -19,9 +32,6 @@ training_instruction = (
     "Khi được hỏi, hãy cung cấp thông tin một cách rõ ràng và dễ hiểu, tương tự như phiên bản GPT-4 của OpenAI."
 )
 
-# Dictionary lưu trữ lịch sử trò chuyện của người dùng
-user_histories = {}
-
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     first_name = message.from_user.first_name
@@ -29,18 +39,13 @@ def handle_start(message):
 
 @bot.message_handler(commands=['ask'])
 def handle_ask(message):
-    user_id = message.from_user.id
     first_name = message.from_user.first_name
+    user_id = message.from_user.id
     question = message.text[len('/ask '):].strip()
     if not question:
         bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi sau lệnh /ask.')
         return
 
-    if user_id not in user_histories:
-        user_histories[user_id] = []
-    
-    user_histories[user_id].append(f"{first_name}: {question}")
-
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
@@ -48,31 +53,24 @@ def handle_ask(message):
 
     try:
         response = model.generate_content([full_prompt])
-        bot.send_message(message.chat.id, response.text)
-        user_histories[user_id].append(f"Hydra: {response.text}")
+        response_text = response.text
+        bot.send_message(message.chat.id, response_text)
+        store_conversation(user_id, 'gemini', question, response_text)
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
-    user_id = message.from_user.id
-    if user_id in user_histories:
-        del user_histories[user_id]
     bot.send_message(message.chat.id, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 def handle_reply(message):
-    user_id = message.from_user.id
     first_name = message.from_user.first_name
+    user_id = message.from_user.id
     question = message.text.strip()
     if not question:
         bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi.')
         return
-
-    if user_id not in user_histories:
-        user_histories[user_id] = []
-
-    user_histories[user_id].append(f"{first_name}: {question}")
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
@@ -81,15 +79,14 @@ def handle_reply(message):
 
     try:
         response = model.generate_content([full_prompt])
-        bot.send_message(message.chat.id, response.text)
-        user_histories[user_id].append(f"Hydra: {response.text}")
+        response_text = response.text
+        bot.send_message(message.chat.id, response_text)
+        store_conversation(user_id, 'gemini', question, response_text)
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
-    user_id = message.from_user.id
-    first_name = message.from_user.first_name
     file_id = message.photo[-1].file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -103,25 +100,20 @@ def handle_photo(message):
 
     try:
         response = model.generate_content(["Đây là bức ảnh gì?", img])
-        bot.send_message(message.chat.id, response.text)
-        user_histories[user_id].append(f"{first_name} đã gửi một bức ảnh.")
-        user_histories[user_id].append(f"Hydra: {response.text}")
+        response_text = response.text
+        bot.send_message(message.chat.id, response_text)
+        store_conversation(message.from_user.id, 'gemini', "Đây là bức ảnh gì?", response_text)
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(func=lambda message: message.chat.type == 'private' and not message.text.startswith('/'))
 def handle_private_message(message):
-    user_id = message.from_user.id
     first_name = message.from_user.first_name
+    user_id = message.from_user.id
     question = message.text.strip()
     if not question:
         bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi.')
         return
-
-    if user_id not in user_histories:
-        user_histories[user_id] = []
-
-    user_histories[user_id].append(f"{first_name}: {question}")
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
@@ -130,8 +122,9 @@ def handle_private_message(message):
 
     try:
         response = model.generate_content([full_prompt])
-        bot.send_message(message.chat.id, response.text)
-        user_histories[user_id].append(f"Hydra: {response.text}")
+        response_text = response.text
+        bot.send_message(message.chat.id, response_text)
+        store_conversation(user_id, 'gemini', question, response_text)
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
