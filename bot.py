@@ -1,7 +1,8 @@
 import telebot
 import google.generativeai as genai
+import PIL.Image
 
-BOT_TOKEN = '7462456370:AAEpRNbLqbQt8vRin8CeZCUgNVyyB7tQLsE'
+BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEY = 'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E'
 bot = telebot.TeleBot(BOT_TOKEN)
 
