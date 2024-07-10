@@ -3,6 +3,7 @@ import telebot
 import google.generativeai as genai
 import PIL.Image
 import time
+from collections import defaultdict, deque
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEY = 'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E'
@@ -14,6 +15,9 @@ training_instruction = (
     "Bạn tên là Hydra, được tạo ra bởi Wyn dựa trên API của Gemini AI với phiên bản Pro 1.5, "
     "cố gắng trả lời một cách ngắn gọn, đầy đủ và chính xác nhất có thể, bạn là một người bạn của tất cả mọi người."
 )
+
+# Lưu trữ lịch sử chat cho mỗi người dùng
+user_histories = defaultdict(lambda: deque(maxlen=5))
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -29,18 +33,24 @@ def handle_ask(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"{first_name} nói: {question}"
+    user_history = user_histories[message.chat.id]
+    history = ' | '.join(user_history)
+    formatted_question = f"Lịch sử của đoạn chat trước là {history}. {first_name} nói: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
     try:
         response = model.generate_content([full_prompt])
         bot.send_message(message.chat.id, response.text)
+        # Lưu trữ câu hỏi và câu trả lời
+        user_history.append(f"{first_name} nói: {question}")
+        user_history.append(f"Hydra nói: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
+    user_histories[message.chat.id].clear()
     bot.send_message(message.chat.id, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
@@ -52,13 +62,18 @@ def handle_reply(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"{first_name} nói: {question}"
+    user_history = user_histories[message.chat.id]
+    history = ' | '.join(user_history)
+    formatted_question = f"Lịch sử của đoạn chat trước là {history}. {first_name} nói: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
     try:
         response = model.generate_content([full_prompt])
         bot.send_message(message.chat.id, response.text)
+        # Lưu trữ câu hỏi và câu trả lời
+        user_history.append(f"{first_name} nói: {question}")
+        user_history.append(f"Hydra nói: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
@@ -78,6 +93,9 @@ def handle_photo(message):
     try:
         response = model.generate_content(["Đây là bức ảnh gì?", img])
         bot.send_message(message.chat.id, response.text)
+        # Lưu trữ câu hỏi và câu trả lời
+        user_histories[message.chat.id].append(f"{message.from_user.first_name} gửi một bức ảnh.")
+        user_histories[message.chat.id].append(f"Hydra nói: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
@@ -90,13 +108,18 @@ def handle_private_message(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"{first_name} nói: {question}"
+    user_history = user_histories[message.chat.id]
+    history = ' | '.join(user_history)
+    formatted_question = f"Lịch sử của đoạn chat trước là {history}. {first_name} nói: {question}"
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
     try:
         response = model.generate_content([full_prompt])
         bot.send_message(message.chat.id, response.text)
+        # Lưu trữ câu hỏi và câu trả lời
+        user_history.append(f"{first_name} nói: {question}")
+        user_history.append(f"Hydra nói: {response.text}")
     except Exception as e:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
