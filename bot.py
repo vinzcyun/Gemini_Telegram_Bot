@@ -35,7 +35,7 @@ def handle_ask(message):
     bot.send_chat_action(message.chat.id, 'typing')
     user_history = user_histories[message.chat.id]
     history = ' | '.join(user_history)
-    formatted_question = f"Lịch sử của đoạn chat trước là {history}. {first_name} nói: {question}"
+    formatted_question = f'Lịch sử của đoạn chat trước là "{history}". {first_name} nói: {question}'
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
@@ -64,7 +64,7 @@ def handle_reply(message):
     bot.send_chat_action(message.chat.id, 'typing')
     user_history = user_histories[message.chat.id]
     history = ' | '.join(user_history)
-    formatted_question = f"Lịch sử của đoạn chat trước là {history}. {first_name} nói: {question}"
+    formatted_question = f'Lịch sử của đoạn chat trước là "{history}". {first_name} nói: {question}'
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
@@ -110,7 +110,7 @@ def handle_private_message(message):
     bot.send_chat_action(message.chat.id, 'typing')
     user_history = user_histories[message.chat.id]
     history = ' | '.join(user_history)
-    formatted_question = f"Lịch sử của đoạn chat trước là {history}. {first_name} nói: {question}"
+    formatted_question = f'Lịch sử của đoạn chat trước là "{history}". {first_name} nói: {question}'
     full_prompt = f"{training_instruction} {formatted_question}"
     model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
 
