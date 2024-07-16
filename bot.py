@@ -74,6 +74,29 @@ def check_spam(user_id):
     last_message_time[user_id] = current_time
     return True
 
+def stream_response(message, prompt):
+    try:
+        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
+        response = model.generate_content(prompt, stream=True)
+        
+        partial_response = ""
+        sent_message = bot.send_message(message.chat.id, "Đang suy nghĩ...")
+        
+        for chunk in response:
+            if chunk.text:
+                partial_response += chunk.text
+                if len(partial_response) >= 20:  # Send update every 20 characters
+                    bot.edit_message_text(partial_response, message.chat.id, sent_message.message_id)
+                    partial_response = ""
+        
+        if partial_response:  # Send any remaining text
+            bot.edit_message_text(partial_response, message.chat.id, sent_message.message_id)
+        
+        return response.text
+    except Exception as e:
+        print(f"Streaming error: {e}")
+        return None
+
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     update_current_time()
@@ -84,11 +107,11 @@ def handle_start(message):
 def handle_ask(message):
     update_current_time()
     user_id = message.from_user.id
-    
+
     if not check_spam(user_id):
         bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
-    
+
     first_name = message.from_user.first_name
     question = message.text[len('/ask '):].strip()
     if not question:
@@ -102,23 +125,11 @@ def handle_ask(message):
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    response = generate_response(full_prompt)
+    response = stream_response(message, full_prompt)
     if response:
         add_to_chat_history(user_id, "AI", response)
-        bot.send_message(message.chat.id, response)
     else:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
-
-def generate_response(prompt):
-    for _ in range(len(GOOGLE_API_KEYS)):
-        try:
-            model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-            response = model.generate_content([prompt])
-            return response.text
-        except Exception as e:
-            print(f"API error: {e}")
-            genai.configure(api_key=get_next_api_key())
-    return None
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
@@ -132,11 +143,11 @@ def handle_clear(message):
 def handle_reply(message):
     update_current_time()
     user_id = message.from_user.id
-    
+
     if not check_spam(user_id):
         bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
-    
+
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
@@ -150,10 +161,9 @@ def handle_reply(message):
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    response = generate_response(full_prompt)
+    response = stream_response(message, full_prompt)
     if response:
         add_to_chat_history(user_id, "AI", response)
-        bot.send_message(message.chat.id, response)
     else:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
@@ -161,11 +171,11 @@ def handle_reply(message):
 def handle_photo(message):
     update_current_time()
     user_id = message.from_user.id
-    
+
     if not check_spam(user_id):
         bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
-    
+
     file_id = message.photo[-1].file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -189,11 +199,11 @@ def handle_photo(message):
 def handle_private_message(message):
     update_current_time()
     user_id = message.from_user.id
-    
+
     if not check_spam(user_id):
         bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
-    
+
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
@@ -207,10 +217,9 @@ def handle_private_message(message):
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    response = generate_response(full_prompt)
+    response = stream_response(message, full_prompt)
     if response:
         add_to_chat_history(user_id, "AI", response)
-        bot.send_message(message.chat.id, response)
     else:
         bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
@@ -218,4 +227,5 @@ while True:
     try:
         bot.polling(none_stop=True)
     except Exception as e:
+        print(f"Bot polling error: {e}")
         time.sleep(15)  # Đợi 15 giây trước khi thử lại
