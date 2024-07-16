@@ -80,11 +80,19 @@ def stream_response(message, prompt):
         response = model.generate_content(prompt, stream=True)
         
         full_response = ""
+        sent_message = bot.send_message(message.chat.id, "Đang suy nghĩ...")
+        
         for chunk in response:
             if chunk.text:
                 full_response += chunk.text
-                bot.send_message(message.chat.id, chunk.text)
-                time.sleep(0.1)  # Thêm độ trễ nhỏ để tránh spam
+                try:
+                    bot.edit_message_text(full_response, message.chat.id, sent_message.message_id)
+                except telebot.apihelper.ApiTelegramException as e:
+                    if e.error_code == 429:  # Too Many Requests error
+                        time.sleep(0.1)  # Đợi 0.1 giây trước khi thử lại
+                    else:
+                        print(f"Error editing message: {e}")
+                time.sleep(0.05)  # Thêm độ trễ nhỏ để tránh spam
         
         return full_response
     except Exception as e:
