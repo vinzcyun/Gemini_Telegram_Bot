@@ -2,6 +2,7 @@ import telebot
 import google.generativeai as genai
 import PIL.Image
 import time
+import random
 from datetime import datetime, timedelta
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
@@ -15,7 +16,6 @@ GOOGLE_API_KEYS = [
 
 bot = telebot.TeleBot(BOT_TOKEN)
 
-current_api_index = 0
 current_time = datetime.now()
 last_message_time = {}
 
@@ -23,12 +23,8 @@ def update_current_time():
     global current_time
     current_time = datetime.now()
 
-def get_next_api_key():
-    global current_api_index
-    current_api_index = (current_api_index + 1) % len(GOOGLE_API_KEYS)
-    return GOOGLE_API_KEYS[current_api_index]
-
-genai.configure(api_key=GOOGLE_API_KEYS[0])
+def get_random_api_key():
+    return random.choice(GOOGLE_API_KEYS)
 
 training_instruction = """
 Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini Pro.
@@ -74,30 +70,53 @@ def check_spam(user_id):
     last_message_time[user_id] = current_time
     return True
 
-def stream_response(message, prompt):
-    try:
-        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-        response = model.generate_content(prompt, stream=True)
+def stream_response(message, prompt, max_retries=5):
+    retries = 0
+    while retries < max_retries:
+        try:
+            genai.configure(api_key=get_random_api_key())
+            model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
+            response = model.generate_content(prompt, stream=True)
 
-        full_response = ""
-        sent_message = bot.send_message(message.chat.id, "Đang suy nghĩ...")
+            full_response = ""
+            sent_message = bot.send_message(message.chat.id, "Đang suy nghĩ...")
 
-        for chunk in response:
-            if chunk.text:
-                full_response += chunk.text
-                try:
-                    bot.edit_message_text(full_response, message.chat.id, sent_message.message_id)
-                except telebot.apihelper.ApiTelegramException as e:
-                    if e.error_code == 429:  # Too Many Requests error
-                        time.sleep(0.1)  # Đợi 0.1 giây trước khi thử lại
-                    else:
-                        print(f"Error editing message: {e}")
-                time.sleep(0.05)  # Thêm độ trễ nhỏ để tránh spam
+            for chunk in response:
+                if chunk.text:
+                    full_response += chunk.text
+                    try:
+                        bot.edit_message_text(full_response, message.chat.id, sent_message.message_id)
+                    except telebot.apihelper.ApiTelegramException as e:
+                        if e.error_code == 429:  # Too Many Requests error
+                            time.sleep(0.1)  # Đợi 0.1 giây trước khi thử lại
+                        else:
+                            print(f"Error editing message: {e}")
+                    time.sleep(0.05)  # Thêm độ trễ nhỏ để tránh spam
 
-        return full_response
-    except Exception as e:
-        print(f"Streaming error: {e}")
-        return None
+            return full_response
+        except Exception as e:
+            print(f"Streaming error (attempt {retries + 1}): {e}")
+            retries += 1
+            if retries < max_retries:
+                wait_time = 2 ** retries + random.uniform(0, 1)  # Exponential backoff with jitter
+                print(f"Retrying in {wait_time:.2f} seconds...")
+                time.sleep(wait_time)
+            else:
+                print("Max retries reached. Giving up.")
+                return None
+
+def process_message(message, formatted_question, user_id):
+    update_current_time()
+    add_to_chat_history(user_id, "Human", formatted_question)
+
+    history = get_chat_history(user_id)
+    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+
+    response = stream_response(message, full_prompt)
+    if response:
+        add_to_chat_history(user_id, "AI", response)
+    else:
+        bot.send_message(message.chat.id, 'Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.')
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -107,7 +126,6 @@ def handle_start(message):
 
 @bot.message_handler(commands=['ask'])
 def handle_ask(message):
-    update_current_time()
     user_id = message.from_user.id
 
     if not check_spam(user_id):
@@ -122,16 +140,7 @@ def handle_ask(message):
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
-    add_to_chat_history(user_id, "Human", formatted_question)
-
-    history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
-
-    response = stream_response(message, full_prompt)
-    if response:
-        add_to_chat_history(user_id, "AI", response)
-    else:
-        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+    process_message(message, formatted_question, user_id)
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
@@ -143,7 +152,6 @@ def handle_clear(message):
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 def handle_reply(message):
-    update_current_time()
     user_id = message.from_user.id
 
     if not check_spam(user_id):
@@ -158,16 +166,7 @@ def handle_reply(message):
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
-    add_to_chat_history(user_id, "Human", formatted_question)
-
-    history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
-
-    response = stream_response(message, full_prompt)
-    if response:
-        add_to_chat_history(user_id, "AI", response)
-    else:
-        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+    process_message(message, formatted_question, user_id)
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
@@ -189,6 +188,7 @@ def handle_photo(message):
     bot.send_chat_action(message.chat.id, 'typing')
 
     try:
+        genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
         response = model.generate_content(["Đây là bức ảnh gì m?", img])
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
@@ -199,7 +199,6 @@ def handle_photo(message):
 
 @bot.message_handler(func=lambda message: message.chat.type == 'private' and not message.text.startswith('/'))
 def handle_private_message(message):
-    update_current_time()
     user_id = message.from_user.id
 
     if not check_spam(user_id):
@@ -214,16 +213,7 @@ def handle_private_message(message):
 
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
-    add_to_chat_history(user_id, "Human", formatted_question)
-
-    history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
-
-    response = stream_response(message, full_prompt)
-    if response:
-        add_to_chat_history(user_id, "AI", response)
-    else:
-        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+    process_message(message, formatted_question, user_id)
 
 while True:
     try:
