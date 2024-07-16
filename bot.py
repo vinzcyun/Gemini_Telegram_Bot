@@ -7,10 +7,10 @@ import random
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
     'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
-    'API_KEY_2',
-    'API_KEY_3',
-    'API_KEY_4',
-    'API_KEY_5'
+    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
+    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
+    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
+    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E'
 ]
 
 bot = telebot.TeleBot(BOT_TOKEN)
