@@ -72,6 +72,7 @@ def check_spam(user_id):
 
 def stream_response(message, prompt, max_retries=5):
     retries = 0
+    sent_message = None
     while retries < max_retries:
         try:
             genai.configure(api_key=get_random_api_key())
@@ -79,13 +80,16 @@ def stream_response(message, prompt, max_retries=5):
             response = model.generate_content(prompt, stream=True)
 
             full_response = ""
-            sent_message = bot.send_message(message.chat.id, "Đang suy nghĩ...")
+            if sent_message is None:
+                sent_message = bot.reply_to(message, "Đang suy nghĩ...")
+            else:
+                bot.edit_message_text("Đang suy nghĩ...", chat_id=message.chat.id, message_id=sent_message.message_id)
 
             for chunk in response:
                 if chunk.text:
                     full_response += chunk.text
                     try:
-                        bot.edit_message_text(full_response, message.chat.id, sent_message.message_id)
+                        bot.edit_message_text(full_response, chat_id=message.chat.id, message_id=sent_message.message_id)
                     except telebot.apihelper.ApiTelegramException as e:
                         if e.error_code == 429:  # Too Many Requests error
                             time.sleep(0.1)  # Đợi 0.1 giây trước khi thử lại
@@ -99,10 +103,17 @@ def stream_response(message, prompt, max_retries=5):
             retries += 1
             if retries < max_retries:
                 wait_time = 2 ** retries + random.uniform(0, 1)  # Exponential backoff with jitter
+                error_message = f"Đang gặp lỗi, thử lại sau {wait_time:.2f} giây..."
+                if sent_message:
+                    bot.edit_message_text(error_message, chat_id=message.chat.id, message_id=sent_message.message_id)
+                else:
+                    sent_message = bot.reply_to(message, error_message)
                 print(f"Retrying in {wait_time:.2f} seconds...")
                 time.sleep(wait_time)
             else:
                 print("Max retries reached. Giving up.")
+                if sent_message:
+                    bot.edit_message_text("Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.", chat_id=message.chat.id, message_id=sent_message.message_id)
                 return None
 
 def process_message(message, formatted_question, user_id):
@@ -115,14 +126,12 @@ def process_message(message, formatted_question, user_id):
     response = stream_response(message, full_prompt)
     if response:
         add_to_chat_history(user_id, "AI", response)
-    else:
-        bot.send_message(message.chat.id, 'Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.')
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     update_current_time()
     first_name = message.from_user.first_name
-    bot.send_message(message.chat.id, f'Xin chào, {first_name}! Tôi là Hydra, một trợ lý ảo thông minh được tạo ra bởi Wyn. Tôi có thể giúp bạn trả lời nhiều câu hỏi khác nhau, đa lĩnh vực. Hãy hỏi tôi bất cứ điều gì, tôi sẽ cố gắng để trả lời cho bạn🥰🥰')
+    bot.reply_to(message, f'Xin chào, {first_name}! Tôi là Hydra, một trợ lý ảo thông minh được tạo ra bởi Wyn. Tôi có thể giúp bạn trả lời nhiều câu hỏi khác nhau, đa lĩnh vực. Hãy hỏi tôi bất cứ điều gì, tôi sẽ cố gắng để trả lời cho bạn🥰🥰')
 
 @bot.message_handler(commands=['ask'])
 def handle_ask(message):
@@ -135,7 +144,7 @@ def handle_ask(message):
     first_name = message.from_user.first_name
     question = message.text[len('/ask '):].strip()
     if not question:
-        bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi sau lệnh /ask.')
+        bot.reply_to(message, 'Bạn cần nhập câu hỏi sau lệnh /ask.')
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
@@ -148,7 +157,7 @@ def handle_clear(message):
     user_id = message.from_user.id
     if user_id in chat_history:
         del chat_history[user_id]
-    bot.send_message(message.chat.id, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
+    bot.reply_to(message, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 def handle_reply(message):
@@ -161,7 +170,7 @@ def handle_reply(message):
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
-        bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi.')
+        bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
@@ -193,12 +202,12 @@ def handle_photo(message):
         response = model.generate_content(["Đây là bức ảnh gì m?", img])
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
-        bot.send_message(message.chat.id, response.text)
+        bot.reply_to(message, response.text)
     except Exception as e:
-        bot.send_message(message.chat.id, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+        bot.reply_to(message, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
-@bot.message_handler(func=lambda message: message.chat.type == 'private' and not message.text.startswith('/'))
-def handle_private_message(message):
+@bot.message_handler(func=lambda message: True)
+def handle_all_messages(message):
     user_id = message.from_user.id
 
     if not check_spam(user_id):
@@ -208,7 +217,7 @@ def handle_private_message(message):
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
-        bot.send_message(message.chat.id, 'Bạn cần nhập câu hỏi.')
+        bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
