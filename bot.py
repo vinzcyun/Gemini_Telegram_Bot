@@ -7,10 +7,10 @@ from datetime import datetime, timedelta
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
     'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
-    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
-    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
-    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E',
-    'AIzaSyC-V3EfjLTDmJR5CTymMHDnqRp2VlrLX5E'
+    'AIzaSyAnd2IfipQU79MF8RfmyCD1McE01Rsi9JU',
+    'AIzaSyCxgpsy9drWK8mYnHCHEL2A341b4t5NvF8',
+    'AIzaSyD_AnYGxhhtxPcBXxFiFimuDsxlR14iV5U',
+    'AIzaSyA57KzCXO2H6NhQASTy4uYl9Vd1QgNPK3I'
 ]
 
 bot = telebot.TeleBot(BOT_TOKEN)
