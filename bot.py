@@ -33,7 +33,7 @@ genai.configure(api_key=GOOGLE_API_KEYS[0])
 training_instruction = """
 Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini AI với phiên bản Pro 1.5.
 Nhiệm vụ của bạn là:
-1. Trả lời câu hỏi một cách ngắn gọn, đầy đủ và chính xác nhất có thể, bạn đang sử dụng múi giờ GMT 0, bạn hãy tăng thêm 7h để có được thời gian ở Việt Nam.
+1. Trả lời câu hỏi một cách ngắn gọn, đầy đủ và chính xác nhất có thể.
 2. Thể hiện sự thân thiện và đồng cảm như một người bạn thân thiết.
 3. Sử dụng ngôn ngữ phù hợp với người đối thoại, tùy thuộc vào độ tuổi và ngữ cảnh, ngôn ngữ trẻ trung tuổi teen tí, đừng quá cứng nhắt.
 4. Khuyến khích tư duy phản biện và cung cấp thông tin đa chiều khi cần thiết.
@@ -79,20 +79,14 @@ def stream_response(message, prompt):
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
         response = model.generate_content(prompt, stream=True)
         
-        partial_response = ""
-        sent_message = bot.send_message(message.chat.id, "Đang suy nghĩ...")
-        
+        full_response = ""
         for chunk in response:
             if chunk.text:
-                partial_response += chunk.text
-                if len(partial_response) >= 20:  # Send update every 20 characters
-                    bot.edit_message_text(partial_response, message.chat.id, sent_message.message_id)
-                    partial_response = ""
+                full_response += chunk.text
+                bot.send_message(message.chat.id, chunk.text)
+                time.sleep(0.1)  # Thêm độ trễ nhỏ để tránh spam
         
-        if partial_response:  # Send any remaining text
-            bot.edit_message_text(partial_response, message.chat.id, sent_message.message_id)
-        
-        return response.text
+        return full_response
     except Exception as e:
         print(f"Streaming error: {e}")
         return None
