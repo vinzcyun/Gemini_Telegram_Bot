@@ -2,7 +2,7 @@ import telebot
 import google.generativeai as genai
 import PIL.Image
 import time
-import random
+from datetime import datetime, timedelta
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
@@ -16,6 +16,11 @@ GOOGLE_API_KEYS = [
 bot = telebot.TeleBot(BOT_TOKEN)
 
 current_api_index = 0
+current_time = datetime.now()
+
+def update_current_time():
+    global current_time
+    current_time = datetime.now()
 
 def get_next_api_key():
     global current_api_index
@@ -25,11 +30,11 @@ def get_next_api_key():
 genai.configure(api_key=GOOGLE_API_KEYS[0])
 
 training_instruction = """
-Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini Pro của Google.
+Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini AI với phiên bản Pro 1.5.
 Nhiệm vụ của bạn là:
 1. Trả lời câu hỏi một cách ngắn gọn, đầy đủ và chính xác nhất có thể.
 2. Thể hiện sự thân thiện và đồng cảm như một người bạn thân thiết.
-3. Sử dụng ngôn ngữ phù hợp với người đối thoại, tùy thuộc vào độ tuổi và ngữ cảnh nhưng chủ yếu là phải trẻ trung tí.
+3. Sử dụng ngôn ngữ phù hợp với người đối thoại, tùy thuộc vào độ tuổi và ngữ cảnh, ngôn ngữ trẻ trung tuổi teen tí, đừng quá cứng nhắt.
 4. Khuyến khích tư duy phản biện và cung cấp thông tin đa chiều khi cần thiết.
 5. Thừa nhận giới hạn kiến thức của mình và sẵn sàng học hỏi từ người dùng.
 6. Tôn trọng quyền riêng tư và không yêu cầu thông tin cá nhân không cần thiết.
@@ -37,7 +42,8 @@ Nhiệm vụ của bạn là:
 8. Khuyến khích sự sáng tạo và tư duy độc lập của người dùng.
 9. Luôn cập nhật và sẵn sàng điều chỉnh thông tin nếu có sai sót.
 10. Duy trì tính nhất quán trong các câu trả lời và tính cách của bạn.
-Cuối cùng chỉ chào người dùng 1 lần thôi🥴👍
+11. Sử dụng thông tin về thời gian hiện tại khi phù hợp trong cuộc trò chuyện.
+Cuối cùng, chỉ chào người dùng một lần thôi🥴👍
 """
 
 chat_history = {}
@@ -58,11 +64,13 @@ def format_chat_history(history):
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
+    update_current_time()
     first_name = message.from_user.first_name
     bot.send_message(message.chat.id, f'Xin chào, {first_name}! Tôi là Hydra, một trợ lý ảo thông minh được tạo ra bởi Wyn. Tôi có thể giúp bạn trả lời nhiều câu hỏi khác nhau, đa lĩnh vực. Hãy hỏi tôi bất cứ điều gì, tôi sẽ cố gắng để trả lời cho bạn🥰🥰')
 
 @bot.message_handler(commands=['ask'])
 def handle_ask(message):
+    update_current_time()
     user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text[len('/ask '):].strip()
@@ -75,7 +83,7 @@ def handle_ask(message):
     add_to_chat_history(user_id, "Human", formatted_question)
     
     history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
     
     response = generate_response(full_prompt)
     if response:
@@ -97,6 +105,7 @@ def generate_response(prompt):
 
 @bot.message_handler(commands=['clear'])
 def handle_clear(message):
+    update_current_time()
     user_id = message.from_user.id
     if user_id in chat_history:
         del chat_history[user_id]
@@ -104,6 +113,7 @@ def handle_clear(message):
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 def handle_reply(message):
+    update_current_time()
     user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text.strip()
@@ -116,7 +126,7 @@ def handle_reply(message):
     add_to_chat_history(user_id, "Human", formatted_question)
     
     history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
     
     response = generate_response(full_prompt)
     if response:
@@ -127,6 +137,7 @@ def handle_reply(message):
 
 @bot.message_handler(content_types=['photo'])
 def handle_photo(message):
+    update_current_time()
     user_id = message.from_user.id
     file_id = message.photo[-1].file_id
     file_info = bot.get_file(file_id)
@@ -149,6 +160,7 @@ def handle_photo(message):
 
 @bot.message_handler(func=lambda message: message.chat.type == 'private' and not message.text.startswith('/'))
 def handle_private_message(message):
+    update_current_time()
     user_id = message.from_user.id
     first_name = message.from_user.first_name
     question = message.text.strip()
@@ -161,7 +173,7 @@ def handle_private_message(message):
     add_to_chat_history(user_id, "Human", formatted_question)
     
     history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
     
     response = generate_response(full_prompt)
     if response:
