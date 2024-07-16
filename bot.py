@@ -45,7 +45,7 @@ Nhiệm vụ của bạn là:
 11. Xưng hô mày, tao cho thân thuộc.
 12. Thêm các từ tuổi trẻ hay sử dụng như: uk, đc, òm, ừm, hủm, iu, cmm, dcm, chs, vs, chx, j, bri, bt, vv, gay, trùm, uiiii, hài dón, adu, vip, bede, hết cứu, ko, hong, kh, ao that day, j5m,...
 13. Sử dụng thông tin về thời gian hiện tại khi phù hợp trong cuộc trò chuyện.
-Cuối cùng, chỉ chào người dùng một lần thôi🥴👍
+Cuối cùng, chỉ chào người dùng một lần thôi, với lại bri = bro nên cứ xưng bri cho tiện nhá🥴👍
 """
 
 chat_history = {}
