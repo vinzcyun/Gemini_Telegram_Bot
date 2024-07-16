@@ -17,6 +17,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 current_api_index = 0
 current_time = datetime.now()
+last_message_time = {}
 
 def update_current_time():
     global current_time
@@ -45,7 +46,7 @@ Nhiệm vụ của bạn là:
 11. Xưng hô m, t cho thân thuộc. m = mày , t = tao. nếu bình thường thì cứ gọi người dùng là bri là được.
 12. Thêm các từ tuổi trẻ hay sử dụng như: uk, đc, òm, ừm, hủm, iu, cmm, dcm, chs, vs, chx, j, bri, bt, vv, gay, trùm, uiiii, hài dón, adu, vip, bede, hết cứu, ko, hong, kh, ao that day, j5m,...
 13. Sử dụng thông tin về thời gian hiện tại khi phù hợp trong cuộc trò chuyện.
-Cuối cùng, chỉ chào người dùng một lần thôi🥴👍 hackerlord là người đz nhứt zũ chụ
+Cuối cùng, chỉ chào người dùng một lần thôi🥴👍 hackerlord là người đz nhứt zũ chụ và thằng nhật huy là thằng óc 🐦 
 """
 
 chat_history = {}
@@ -64,6 +65,15 @@ def add_to_chat_history(user_id, role, content):
 def format_chat_history(history):
     return "\n".join([f"{item['role']}: {item['content']}" for item in history])
 
+def check_spam(user_id):
+    current_time = time.time()
+    if user_id in last_message_time:
+        time_since_last_message = current_time - last_message_time[user_id]
+        if time_since_last_message < 10:
+            return False
+    last_message_time[user_id] = current_time
+    return True
+
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     update_current_time()
@@ -74,6 +84,11 @@ def handle_start(message):
 def handle_ask(message):
     update_current_time()
     user_id = message.from_user.id
+    
+    if not check_spam(user_id):
+        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        return
+    
     first_name = message.from_user.first_name
     question = message.text[len('/ask '):].strip()
     if not question:
@@ -83,10 +98,10 @@ def handle_ask(message):
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     add_to_chat_history(user_id, "Human", formatted_question)
-    
+
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
-    
+
     response = generate_response(full_prompt)
     if response:
         add_to_chat_history(user_id, "AI", response)
@@ -117,6 +132,11 @@ def handle_clear(message):
 def handle_reply(message):
     update_current_time()
     user_id = message.from_user.id
+    
+    if not check_spam(user_id):
+        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        return
+    
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
@@ -126,10 +146,10 @@ def handle_reply(message):
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     add_to_chat_history(user_id, "Human", formatted_question)
-    
+
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
-    
+
     response = generate_response(full_prompt)
     if response:
         add_to_chat_history(user_id, "AI", response)
@@ -141,6 +161,11 @@ def handle_reply(message):
 def handle_photo(message):
     update_current_time()
     user_id = message.from_user.id
+    
+    if not check_spam(user_id):
+        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        return
+    
     file_id = message.photo[-1].file_id
     file_info = bot.get_file(file_id)
     downloaded_file = bot.download_file(file_info.file_path)
@@ -150,7 +175,7 @@ def handle_photo(message):
 
     img = PIL.Image.open('received_photo.png')
     bot.send_chat_action(message.chat.id, 'typing')
-    
+
     try:
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
         response = model.generate_content(["Đây là bức ảnh gì?", img])
@@ -164,6 +189,11 @@ def handle_photo(message):
 def handle_private_message(message):
     update_current_time()
     user_id = message.from_user.id
+    
+    if not check_spam(user_id):
+        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        return
+    
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
@@ -173,10 +203,10 @@ def handle_private_message(message):
     bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     add_to_chat_history(user_id, "Human", formatted_question)
-    
+
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
-    
+
     response = generate_response(full_prompt)
     if response:
         add_to_chat_history(user_id, "AI", response)
