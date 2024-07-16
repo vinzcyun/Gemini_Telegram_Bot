@@ -179,7 +179,7 @@ def handle_photo(message):
 
     try:
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-        response = model.generate_content(["Đây là bức ảnh gì?", img])
+        response = model.generate_content(["Đây là bức ảnh gì m?", img])
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         bot.send_message(message.chat.id, response.text)
