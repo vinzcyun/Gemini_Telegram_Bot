@@ -5,6 +5,7 @@ import time
 import random
 from datetime import datetime, timedelta
 import re
+from collections import deque
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
@@ -20,6 +21,7 @@ bot = telebot.TeleBot(BOT_TOKEN)
 current_time = datetime.now()
 last_message_time = {}
 chat_history = {}
+api_key_queue = deque(GOOGLE_API_KEYS)
 
 safety_settings = [
     {
@@ -128,8 +130,11 @@ def update_current_time():
     global current_time
     current_time = datetime.now()
 
-def get_random_api_key():
-    return random.choice(GOOGLE_API_KEYS)
+def get_next_api_key():
+    global api_key_queue
+    api_key = api_key_queue.popleft()
+    api_key_queue.append(api_key)
+    return api_key
 
 def get_chat_history(user_id):
     if user_id not in chat_history:
@@ -154,11 +159,11 @@ def check_spam(user_id):
     last_message_time[user_id] = current_time
     return True
 
-def generate_response(prompt, max_retries=5):
+def generate_response(prompt, max_retries=10):
     retries = 0
     while retries < max_retries:
         try:
-            genai.configure(api_key=get_random_api_key())
+            genai.configure(api_key=get_next_api_key())
             model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
             response = model.generate_content(prompt, safety_settings=safety_settings)
             return response.text
@@ -166,11 +171,8 @@ def generate_response(prompt, max_retries=5):
             print(f"Generation error (attempt {retries + 1}): {e}")
             retries += 1
             if retries < max_retries:
-                wait_time = 2 ** retries + random.uniform(0, 1)
-                print(f"Retrying in {wait_time:.2f} seconds...")
-                time.sleep(wait_time)
+                time.sleep(1)
             else:
-                print("Max retries reached. Giving up.")
                 return None
 
 def process_message(message, formatted_question, user_id):
@@ -180,14 +182,14 @@ def process_message(message, formatted_question, user_id):
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    sent_message = bot.reply_to(message, "Đang suy nghĩ...")
+    typing_message = bot.send_chat_action(message.chat.id, 'typing')
     response = generate_response(full_prompt)
-    
+
     if response:
-        bot.edit_message_text(escape(response), chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+        bot.edit_message_text(escape(response), chat_id=message.chat.id, message_id=typing_message.message_id, parse_mode='MarkdownV2')
         add_to_chat_history(user_id, "AI", response)
     else:
-        bot.edit_message_text("Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.", chat_id=message.chat.id, message_id=sent_message.message_id)
+        bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau ...", chat_id=message.chat.id, message_id=typing_message.message_id)
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -209,7 +211,6 @@ def handle_ask(message):
         bot.reply_to(message, 'Bạn cần nhập câu hỏi sau lệnh /ask.')
         return
 
-    bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name}nói: {question}"
     process_message(message, formatted_question, user_id)
 
@@ -235,7 +236,6 @@ def handle_reply(message):
         bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
         return
 
-    bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name} nói: {question}"
     process_message(message, formatted_question, user_id)
 
@@ -256,17 +256,18 @@ def handle_photo(message):
         new_file.write(downloaded_file)
 
     img = PIL.Image.open('received_photo.png')
-    bot.send_chat_action(message.chat.id, 'typing')
+
+    typing_message = bot.send_chat_action(message.chat.id, 'typing')
 
     try:
-        genai.configure(api_key=get_random_api_key())
+        genai.configure(api_key=get_next_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
         response = model.generate_content(["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
-        bot.reply_to(message, escape(response.text), parse_mode='MarkdownV2')
+        bot.edit_message_text(escape(response.text), chat_id=message.chat.id, message_id=typing_message.message_id, parse_mode='MarkdownV2')
     except Exception as e:
-        bot.reply_to(message, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+        bot.edit_message_text('Dịch vụ không phản hồi, vui lòng thử lại sau ...', chat_id=message.chat.id, message_id=typing_message.message_id)
 
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
@@ -282,7 +283,6 @@ def handle_all_messages(message):
         bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
         return
 
-    bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name} nói: {question}"
     process_message(message, formatted_question, user_id)
 
