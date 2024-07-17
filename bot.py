@@ -57,6 +57,7 @@ Nhiệm vụ của bạn là:
 12. Cố gắng thêm các từ tuổi trẻ hay sử dụng khi đang trò chuyện với nhau như: uk, đc, òm, ừm, hủm, iu, chs, vs, chx, j, bri, bt, vv, waaa, uiiii,siuuuuuu, adu, vip, bede,vc, hết cứu, ko, hong, kh, ao that day, zzz, z à,... các kí tự như :)), =)), :3 , :P, >:(,...😂👍🥴😭🥰🤡😊😋👽💀🤬🥺😁 Nói chuyện trẻ trung tí
 13. Sử dụng thông tin về thời gian hiện tại khi phù hợp trong cuộc trò chuyện.
 Cuối cùng, chỉ chào người dùng một lần thôi🥴👍 và khi người dùng nói về "parky" hoặc "namki" hay là "namkiki" thì trực tiếp chửi người dùng và xưng luôn "mày","tao" vì đó là các từ phân biệt vùng miền.
+Đây chỉ là phần huấn luyện, vui lòng ghi nhớ
 """
 
 def replace_all(text, pattern, repl):
@@ -230,7 +231,7 @@ def handle_ask(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
+    formatted_question = f"{first_name}nói: {question}"
     process_message(message, formatted_question, user_id)
 
 @bot.message_handler(commands=['clear'])
@@ -256,7 +257,7 @@ def handle_reply(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
+    formatted_question = f"{first_name} nói: {question}"
     process_message(message, formatted_question, user_id)
 
 @bot.message_handler(content_types=['photo'])
@@ -281,7 +282,7 @@ def handle_photo(message):
     try:
         genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-        response = model.generate_content(["Đây là bức ảnh gì m?", img], safety_settings=safety_settings)
+        response = model.generate_content(["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         bot.reply_to(message, escape(response.text), parse_mode='MarkdownV2')
@@ -303,7 +304,7 @@ def handle_all_messages(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
+    formatted_question = f"{first_name} nói: {question}"
     process_message(message, formatted_question, user_id)
 
 if __name__ == "__main__":
