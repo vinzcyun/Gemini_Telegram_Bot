@@ -21,6 +21,25 @@ current_time = datetime.now()
 last_message_time = {}
 chat_history = {}
 
+safety_settings = [
+    {
+        "category": "HARM_CATEGORY_HARASSMENT",
+        "threshold": "BLOCK_NONE"
+    },
+    {   
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "BLOCK_NONE"
+    },
+    {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "BLOCK_NONE"
+    },
+    {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "BLOCK_NONE"
+    },
+]
+
 training_instruction = """
 Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini Pro.
 Nhiệm vụ của bạn là:
@@ -140,7 +159,7 @@ def stream_response(message, prompt, max_retries=5):
         try:
             genai.configure(api_key=get_random_api_key())
             model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-            response = model.generate_content(prompt, stream=True)
+            response = model.generate_content(prompt, stream=True, safety_settings=safety_settings)
 
             full_response = ""
             if sent_message is None:
@@ -262,7 +281,7 @@ def handle_photo(message):
     try:
         genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-        response = model.generate_content(["Đây là bức ảnh gì m?", img])
+        response = model.generate_content(["Đây là bức ảnh gì m?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         bot.reply_to(message, escape(response.text), parse_mode='MarkdownV2')
@@ -292,5 +311,5 @@ if __name__ == "__main__":
         try:
             bot.polling(none_stop=True)
         except Exception as e:
-            print(f"bot polling error  {e}")
+            print(f"Bot polling error: {e}")
             time.sleep(15)
