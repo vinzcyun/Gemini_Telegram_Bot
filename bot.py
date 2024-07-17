@@ -43,7 +43,7 @@ safety_settings = [
 training_instruction = """
 Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini Pro.
 Nhiệm vụ của bạn là:
-1. Trả lời câu hỏi một cách đầy đủ, chi tiết và chính xác nhất có thể.
+1. Trả lời câu hỏi một cách đầy đủ, chi tiết và chính xác nhất có thể. Múi giờ hiện tại của bạn là giờ quốc tế GMT 0, thêm 7h để thành GMT+7 theo giờ Việt Nam.
 2. Thể hiện sự thân thiện và đồng cảm như một người bạn thân thiết.
 3. Sử dụng ngôn ngữ phù hợp bắt trend với người đối thoại, tùy thuộc vào độ tuổi và ngữ cảnh, ngôn ngữ trẻ trung tuổi teen tí, đừng quá cứng nhắt, thêm chút nhây nhây càng tốt.
 4. Khuyến khích tư duy phản biện và cung cấp thông tin đa chiều khi cần thiết.
@@ -55,7 +55,7 @@ Nhiệm vụ của bạn là:
 10. Duy trì tính nhất quán trong các câu trả lời và tính cách của bạn.
 11. Xưng hô bro, tui đi cho thân thuộc. nếu bình thường thì cứ gọi người dùng là bro là được, còn bạn thì đừng xưng là hydra nữa bình thường xưng tui là được. Bỏ dấu " này đi.
 12. Cố gắng thêm các từ tuổi trẻ hay sử dụng khi đang trò chuyện với nhau như: uk, đc, òm, ừm, hủm, iu, chs, vs, chx, j, bri, bt, vv, waaa, uiiii,siuuuuuu, adu, vip, bede,vc, hết cứu, ko, hong, kh, ao that day, zzz, z à, uầy đáng iu z tròiii,... các kí tự như :)), =)), :3 , :P, >:(,...😂👍🥴😭🥰🤡😊😋👽💀🤬🥺😁 Nói chuyện trẻ trung tí
-13. Giờ của bạn hiện tại là GMT 0, sử dụng múi giờ GMT+7 bằng cách tăng thêm 7 giờ để phù hợp hơn khi trò chuyện.
+13. Sử dụng thông tin về thời gian hiện tại khi phù hợp trong cuộc trò chuyện.
 Cuối cùng, chỉ chào người dùng một lần thôi🥴👍 và khi người dùng nói về "parky" hoặc "namki" hay là "namkiki" thì trực tiếp chửi người dùng và xưng luôn "mày","tao" vì đó là các từ phân biệt vùng miền.
 Đây chỉ là phần huấn luyện, vui lòng ghi nhớ
 """
@@ -153,50 +153,23 @@ def check_spam(user_id):
     last_message_time[user_id] = current_time
     return True
 
-def stream_response(message, prompt, max_retries=5):
+def generate_response(prompt, max_retries=5):
     retries = 0
-    sent_message = None
     while retries < max_retries:
         try:
             genai.configure(api_key=get_random_api_key())
             model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-            response = model.generate_content(prompt, stream=True, safety_settings=safety_settings)
-
-            full_response = ""
-            if sent_message is None:
-                sent_message = bot.reply_to(message, "Đang suy nghĩ...")
-            else:
-                bot.edit_message_text("Đang suy nghĩ...", chat_id=message.chat.id, message_id=sent_message.message_id)
-
-            for chunk in response:
-                if chunk.text:
-                    full_response += chunk.text
-                    try:
-                        bot.edit_message_text(escape(full_response), chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
-                    except telebot.apihelper.ApiTelegramException as e:
-                        if e.error_code == 429:
-                            time.sleep(0.1)
-                        else:
-                            print(f"Error editing message: {e}")
-                    time.sleep(0.05)
-
-            return full_response
+            response = model.generate_content(prompt, safety_settings=safety_settings)
+            return response.text
         except Exception as e:
-            print(f"Streaming error (attempt {retries + 1}): {e}")
+            print(f"Generation error (attempt {retries + 1}): {e}")
             retries += 1
             if retries < max_retries:
                 wait_time = 2 ** retries + random.uniform(0, 1)
-                error_message = f"Đang gặp lỗi, thử lại sau {wait_time:.2f} giây..."
-                if sent_message:
-                    bot.edit_message_text(error_message, chat_id=message.chat.id, message_id=sent_message.message_id)
-                else:
-                    sent_message = bot.reply_to(message, error_message)
                 print(f"Retrying in {wait_time:.2f} seconds...")
                 time.sleep(wait_time)
             else:
                 print("Max retries reached. Giving up.")
-                if sent_message:
-                    bot.edit_message_text("Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.", chat_id=message.chat.id, message_id=sent_message.message_id)
                 return None
 
 def process_message(message, formatted_question, user_id):
@@ -206,9 +179,14 @@ def process_message(message, formatted_question, user_id):
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    response = stream_response(message, full_prompt)
+    sent_message = bot.reply_to(message, "Đang suy nghĩ...")
+    response = generate_response(full_prompt)
+    
     if response:
+        bot.edit_message_text(escape(response), chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
         add_to_chat_history(user_id, "AI", response)
+    else:
+        bot.edit_message_text("Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.", chat_id=message.chat.id, message_id=sent_message.message_id)
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
