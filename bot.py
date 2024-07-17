@@ -154,7 +154,7 @@ def check_spam(user_id):
     last_message_time[user_id] = current_time
     return True
 
-def generate_response(prompt, max_retries=5):
+def generate_response(prompt, max_retries=10):
     retries = 0
     while retries < max_retries:
         try:
@@ -166,9 +166,7 @@ def generate_response(prompt, max_retries=5):
             print(f"Generation error (attempt {retries + 1}): {e}")
             retries += 1
             if retries < max_retries:
-                wait_time = 2 ** retries + random.uniform(0, 1)
-                print(f"Retrying in {wait_time:.2f} seconds...")
-                time.sleep(wait_time)
+                time.sleep(1)
             else:
                 print("Max retries reached. Giving up.")
                 return None
@@ -180,14 +178,14 @@ def process_message(message, formatted_question, user_id):
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    sent_message = bot.reply_to(message, "Đang suy nghĩ...")
+    bot.send_chat_action(message.chat.id, 'typing')
     response = generate_response(full_prompt)
 
     if response:
-        bot.edit_message_text(escape(response), chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+        bot.send_message(message.chat.id, escape(response), parse_mode='MarkdownV2')
         add_to_chat_history(user_id, "AI", response)
     else:
-        bot.edit_message_text("Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.", chat_id=message.chat.id, message_id=sent_message.message_id)
+        bot.send_message(message.chat.id, "Dịch vụ không phản hồi, vui lòng thử lại sau ...")
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
