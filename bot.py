@@ -4,6 +4,7 @@ import PIL.Image
 import time
 import random
 from datetime import datetime, timedelta
+import re
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
@@ -18,13 +19,26 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 current_time = datetime.now()
 last_message_time = {}
+chat_history = {}
 
-def update_current_time():
-    global current_time
-    current_time = datetime.now()
-
-def get_random_api_key():
-    return random.choice(GOOGLE_API_KEYS)
+safety_settings = [
+    {
+        "category": "HARM_CATEGORY_HARASSMENT",
+        "threshold": "BLOCK_NONE"
+    },
+    {   
+        "category": "HARM_CATEGORY_HATE_SPEECH",
+        "threshold": "BLOCK_NONE"
+    },
+    {
+        "category": "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+        "threshold": "BLOCK_NONE"
+    },
+    {
+        "category": "HARM_CATEGORY_DANGEROUS_CONTENT",
+        "threshold": "BLOCK_NONE"
+    },
+]
 
 training_instruction = """
 Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini Pro.
@@ -45,7 +59,75 @@ Nhiệm vụ của bạn là:
 Cuối cùng, chỉ chào người dùng một lần thôi🥴👍
 """
 
-chat_history = {}
+def replace_all(text, pattern, repl):
+    return re.sub(pattern, repl, text)
+
+def escapeshape(matchobj):
+    return matchobj.group(0)
+
+def escapeplus(matchobj):
+    return matchobj.group(0)
+
+def escapeminus(matchobj):
+    return matchobj.group(0)
+
+def escapebackquote(matchobj):
+    return matchobj.group(0)
+
+def escape(text, flag=0):
+    text = re.sub(r"\\\[", "@->@", text)
+    text = re.sub(r"\\\]", "@<-@", text)
+    text = re.sub(r"\\\(", "@-->@", text)
+    text = re.sub(r"\\\)", "@<--@", text)
+    if flag:
+        text = re.sub(r"\\\\", "@@@", text)
+    text = re.sub(r"\\", r"\\\\", text)
+    if flag:
+        text = re.sub(r"\@{3}", r"\\\\", text)
+    text = re.sub(r"_", "\_", text)
+    text = re.sub(r"\*{2}(.*?)\*{2}", "@@@\\1@@@", text)
+    text = re.sub(r"\n{1,2}\*\s", "\n\n• ", text)
+    text = re.sub(r"\*", "\*", text)
+    text = re.sub(r"\@{3}(.*?)\@{3}", "*\\1*", text)
+    text = re.sub(r"\!?\[(.*?)\]\((.*?)\)", "@@@\\1@@@^^^\\2^^^", text)
+    text = re.sub(r"\[", "\[", text)
+    text = re.sub(r"\]", "\]", text)
+    text = re.sub(r"\(", "\(", text)
+    text = re.sub(r"\)", "\)", text)
+    text = re.sub(r"\@\-\>\@", "\[", text)
+    text = re.sub(r"\@\<\-\@", "\]", text)
+    text = re.sub(r"\@\-\-\>\@", "\(", text)
+    text = re.sub(r"\@\<\-\-\@", "\)", text)
+    text = re.sub(r"\@{3}(.*?)\@{3}\^{3}(.*?)\^{3}", "[\\1](\\2)", text)
+    text = re.sub(r"~", "\~", text)
+    text = re.sub(r">", "\>", text)
+    text = replace_all(text, r"(^#+\s.+?$)|```[\D\d\s]+?```", escapeshape)
+    text = re.sub(r"#", "\#", text)
+    text = replace_all(
+        text, r"(\+)|\n[\s]*-\s|```[\D\d\s]+?```|`[\D\d\s]*?`", escapeplus
+    )
+    text = re.sub(r"\n{1,2}(\s*)-\s", "\n\n\\1• ", text)
+    text = re.sub(r"\n{1,2}(\s*\d{1,2}\.\s)", "\n\n\\1", text)
+    text = replace_all(
+        text, r"(-)|\n[\s]*-\s|```[\D\d\s]+?```|`[\D\d\s]*?`", escapeminus
+    )
+    text = re.sub(r"```([\D\d\s]+?)```", "@@@\\1@@@", text)
+    text = replace_all(text, r"(``)", escapebackquote)
+    text = re.sub(r"\@{3}([\D\d\s]+?)\@{3}", "```\\1```", text)
+    text = re.sub(r"=", "\=", text)
+    text = re.sub(r"\|", "\|", text)
+    text = re.sub(r"{", "\{", text)
+    text = re.sub(r"}", "\}", text)
+    text = re.sub(r"\.", "\.", text)
+    text = re.sub(r"!", "\!", text)
+    return text
+
+def update_current_time():
+    global current_time
+    current_time = datetime.now()
+
+def get_random_api_key():
+    return random.choice(GOOGLE_API_KEYS)
 
 def get_chat_history(user_id):
     if user_id not in chat_history:
@@ -55,7 +137,7 @@ def get_chat_history(user_id):
 def add_to_chat_history(user_id, role, content):
     history = get_chat_history(user_id)
     history.append({"role": role, "content": content})
-    if len(history) > 50:  # Giới hạn lịch sử 50 tin nhắn
+    if len(history) > 50:
         history.pop(0)
 
 def format_chat_history(history):
@@ -77,7 +159,7 @@ def stream_response(message, prompt, max_retries=5):
         try:
             genai.configure(api_key=get_random_api_key())
             model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-            response = model.generate_content(prompt, stream=True)
+            response = model.generate_content(prompt, stream=True, safety_settings=safety_settings)
 
             full_response = ""
             if sent_message is None:
@@ -89,20 +171,20 @@ def stream_response(message, prompt, max_retries=5):
                 if chunk.text:
                     full_response += chunk.text
                     try:
-                        bot.edit_message_text(full_response, chat_id=message.chat.id, message_id=sent_message.message_id)
+                        bot.edit_message_text(escape(full_response), chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
                     except telebot.apihelper.ApiTelegramException as e:
-                        if e.error_code == 429:  # Too Many Requests error
-                            time.sleep(0.1)  # Đợi 0.1 giây trước khi thử lại
+                        if e.error_code == 429:
+                            time.sleep(0.1)
                         else:
                             print(f"Error editing message: {e}")
-                    time.sleep(0.05)  # Thêm độ trễ nhỏ để tránh spam
+                    time.sleep(0.05)
 
             return full_response
         except Exception as e:
             print(f"Streaming error (attempt {retries + 1}): {e}")
             retries += 1
             if retries < max_retries:
-                wait_time = 2 ** retries + random.uniform(0, 1)  # Exponential backoff with jitter
+                wait_time = 2 ** retries + random.uniform(0, 1)
                 error_message = f"Đang gặp lỗi, thử lại sau {wait_time:.2f} giây..."
                 if sent_message:
                     bot.edit_message_text(error_message, chat_id=message.chat.id, message_id=sent_message.message_id)
@@ -199,10 +281,10 @@ def handle_photo(message):
     try:
         genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-        response = model.generate_content(["Đây là bức ảnh gì m?", img])
+        response = model.generate_content(["Đây là bức ảnh gì m?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
-        bot.reply_to(message, response.text)
+        bot.reply_to(message, escape(response.text), parse_mode='MarkdownV2')
     except Exception as e:
         bot.reply_to(message, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
 
@@ -224,9 +306,10 @@ def handle_all_messages(message):
     formatted_question = f"Tôi là {first_name}, tôi muốn hỏi: {question}"
     process_message(message, formatted_question, user_id)
 
-while True:
-    try:
-        bot.polling(none_stop=True)
-    except Exception as e:
-        print(f"Bot polling error: {e}")
-        time.sleep(15)  # Đợi 15 giây trước khi thử lại
+if __name__ == "__main__":
+    while True:
+        try:
+            bot.polling(none_stop=True)
+        except Exception as e:
+            print(f"Bot polling error: {e}")
+            time.sleep(15)
