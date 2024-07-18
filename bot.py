@@ -189,7 +189,7 @@ def process_message(message, formatted_question, user_id):
             add_to_chat_history(user_id, "AI", response)
         except telebot.apihelper.ApiException as e:
             print(f"Error sending message: {e}")
-            bot.edit_message_text("Xin lỗi, tui gặp vấn đề khi định dạng câu trả lời. Đây là câu trả lời không định dạng:\n\n" + response, chat_id=message.chat.id, message_id=sent_message.message_id)
+            bot.edit_message_text("\n" + response, chat_id=message.chat.id, message_id=sent_message.message_id)
             add_to_chat_history(user_id, "AI", response)
     else:
         bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau ...", chat_id=message.chat.id, message_id=sent_message.message_id)
