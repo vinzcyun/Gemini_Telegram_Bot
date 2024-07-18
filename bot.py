@@ -165,7 +165,7 @@ async def generate_response(prompt, max_retries=10):
     while retries < max_retries:
         try:
             genai.configure(api_key=get_random_api_key())
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
+            model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
             response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
             return response.text
         except Exception as e:
