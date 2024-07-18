@@ -77,40 +77,51 @@ def escapebackquote(matchobj):
     return matchobj.group(0)
 
 def escape(text, flag=0):
-    # Chuyển đổi các ký tự đặc biệt tạm thời
     text = re.sub(r"\\\[", "@->@", text)
     text = re.sub(r"\\\]", "@<-@", text)
     text = re.sub(r"\\\(", "@-->@", text)
     text = re.sub(r"\\\)", "@<--@", text)
-
-    # Nếu cờ được bật, thay thế các dấu gạch chéo
     if flag:
         text = re.sub(r"\\\\", "@@@", text)
-
-    # Thay thế dấu gạch chéo ngược
     text = re.sub(r"\\", r"\\\\", text)
-    
     if flag:
         text = re.sub(r"\@{3}", r"\\\\", text)
-
-    # Thay thế các ký tự đặc biệt khác
-    text = re.sub(r"_", r"\_", text)
-    text = re.sub(r"\*{2}(.*?)\*{2}", r"@@@\\1@@@", text)
-    text = re.sub(r"\n{1,2}\*\s", r"\n\n• ", text)
-    text = re.sub(r"\*", r"\*", text)
-    text = re.sub(r"\@{3}(.*?)\@{3}", r"*\1*", text)
-    text = re.sub(r"\!?\[(.*?)\]\((.*?)\)", r"@@@\\1@@@^^^\\2^^^", text)
-    
-    # Chuyển đổi ngược các ký tự đặc biệt tạm thời
-    text = re.sub(r"\@\-\>\@", r"[", text)
-    text = re.sub(r"\@\<\-\@", r"]", text)
-    text = re.sub(r"\@\-\-\>\@", r"(", text)
-    text = re.sub(r"\@\<\-\-\@", r")", text)
-    text = re.sub(r"\@{3}(.*?)\@{3}\^{3}(.*?)\^{3}", r"[\1](\2)", text)
-
-    # Thay thế các ký tự khác
-    text = re.sub(r"\|", r"\|", text)
-
+    text = re.sub(r"_", "\_", text)
+    text = re.sub(r"\*{2}(.*?)\*{2}", "@@@\\1@@@", text)
+    text = re.sub(r"\n{1,2}\*\s", "\n\n• ", text)
+    text = re.sub(r"\*", "\*", text)
+    text = re.sub(r"\@{3}(.*?)\@{3}", "*\\1*", text)
+    text = re.sub(r"\!?\[(.*?)\]\((.*?)\)", "@@@\\1@@@^^^\\2^^^", text)
+    text = re.sub(r"\[", "\[", text)
+    text = re.sub(r"\]", "\]", text)
+    text = re.sub(r"\(", "\(", text)
+    text = re.sub(r"\)", "\)", text)
+    text = re.sub(r"\@\-\>\@", "\[", text)
+    text = re.sub(r"\@\<\-\@", "\]", text)
+    text = re.sub(r"\@\-\-\>\@", "\(", text)
+    text = re.sub(r"\@\<\-\-\@", "\)", text)
+    text = re.sub(r"\@{3}(.*?)\@{3}\^{3}(.*?)\^{3}", "[\\1](\\2)", text)
+    text = re.sub(r"~", "\~", text)
+    text = re.sub(r">", "\>", text)
+    text = replace_all(text, r"(^#+\s.+?$)|```[\D\d\s]+?```", escapeshape)
+    text = re.sub(r"#", "\#", text)
+    text = replace_all(
+        text, r"(\+)|\n[\s]*-\s|```[\D\d\s]+?```|`[\D\d\s]*?`", escapeplus
+    )
+    text = re.sub(r"\n{1,2}(\s*)-\s", "\n\n\\1• ", text)
+    text = re.sub(r"\n{1,2}(\s*\d{1,2}\.\s)", "\n\n\\1", text)
+    text = replace_all(
+        text, r"(-)|\n[\s]*-\s|```[\D\d\s]+?```|`[\D\d\s]*?`", escapeminus
+    )
+    text = re.sub(r"```([\D\d\s]+?)```", "@@@\\1@@@", text)
+    text = replace_all(text, r"(``)", escapebackquote)
+    text = re.sub(r"\@{3}([\D\d\s]+?)\@{3}", "```\\1```", text)
+    text = re.sub(r"=", "\=", text)
+    text = re.sub(r"\|", "\|", text)
+    text = re.sub(r"{", "\{", text)
+    text = re.sub(r"}", "\}", text)
+    text = re.sub(r"\.", "\.", text)
+    text = re.sub(r"!", "\!", text)
     return text
 
 def update_current_time():
