@@ -255,9 +255,9 @@ def handle_info(message):
     gemini_ping = ping_server('https://generativelanguage.googleapis.com')
 
     info_message = (
-        "TELEGRAM BOT\n"
-        f"Ping đến API Telegram: {telegram_ping:.2f}ms\n"
-        f"Ping đến API Gemini: {gemini_ping:.2f}ms\n"
+        "HYDRA AI\n"
+        f"Ping/Pong API Telegram: {telegram_ping:.2f}ms\n"
+        f"Ping/Pong API Gemini: {gemini_ping:.2f}ms\n"
         f"CPU: {cpu}\n"
         f"Số nhân, số luồng: {cpu_cores}, {cpu_threads}\n"
         f"Ram: {ram} MB\n"
