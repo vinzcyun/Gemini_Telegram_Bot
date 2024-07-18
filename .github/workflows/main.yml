@@ -24,7 +24,7 @@ jobs:
     - name: Update and install dependencies
       run: |
         sudo apt update -y
-        pip install telebot
+        pip install telebot && pip install asyncio
         pip install google.generativeai
         pip install pillow && pip install psutil
 
