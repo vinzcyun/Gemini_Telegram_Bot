@@ -5,6 +5,10 @@ import time
 import random
 from datetime import datetime, timedelta
 import re
+import psutil
+import platform
+import requests
+import socket
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
@@ -195,6 +199,22 @@ def process_message(message, formatted_question, user_id):
     else:
         bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau ...", chat_id=message.chat.id, message_id=sent_message.message_id)
 
+def get_system_info():
+    cpu = platform.processor()
+    cpu_cores = psutil.cpu_count(logical=False)
+    cpu_threads = psutil.cpu_count(logical=True)
+    ram = psutil.virtual_memory().total // (1024 * 1024)  # Convert to MB
+    disk = psutil.disk_usage('/').total // (1024 * 1024 * 1024)  # Convert to GB
+    os_info = f"{platform.system()} {platform.release()}"
+    return cpu, cpu_cores, cpu_threads, ram, disk, os_info
+
+def ping_server(url):
+    try:
+        response = requests.get(url, timeout=5)
+        return response.elapsed.total_seconds() * 1000  # Convert to milliseconds
+    except requests.RequestException:
+        return None
+
 @bot.message_handler(commands=['start'])
 def handle_start(message):
     update_current_time()
@@ -226,6 +246,27 @@ def handle_clear(message):
     if user_id in chat_history:
         del chat_history[user_id]
     bot.reply_to(message, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
+
+@bot.message_handler(commands=['info'])
+def handle_info(message):
+    update_current_time()
+    cpu, cpu_cores, cpu_threads, ram, disk, os_info = get_system_info()
+    telegram_ping = ping_server('https://api.telegram.org')
+    gemini_ping = ping_server('https://generativelanguage.googleapis.com')
+
+    info_message = (
+        "TELEGRAM BOT\n"
+        f"Ping đến API Telegram: {telegram_ping:.2f}ms\n"
+        f"Ping đến API Gemini: {gemini_ping:.2f}ms\n"
+        f"CPU: {cpu}\n"
+        f"Số nhân, số luồng: {cpu_cores}, {cpu_threads}\n"
+        f"Ram: {ram} MB\n"
+        f"Bộ nhớ trong: {disk} GB\n"
+        f"Hệ điều hành: {os_info}\n"
+        "Tình trạng: 200 OK"
+    )
+
+    bot.reply_to(message, info_message)
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 def handle_reply(message):
