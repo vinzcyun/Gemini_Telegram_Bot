@@ -77,19 +77,6 @@ def escapebackquote(matchobj):
     return matchobj.group(0)
 
 def escape(text, flag=0):
-    # Xử lý các ký tự đặc biệt trong Markdown
-    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
-    for char in special_chars:
-        text = text.replace(char, '\\' + char)
-    
-    # Xử lý các ký tự toán học phổ biến
-    math_chars = ['^', '√', '∑', '∫', '∏', '≈', '≠', '≤', '≥', '±', '∞', '∂', '∇', '∆']
-    for char in math_chars:
-        text = text.replace(char, '\\' + char)
-    
-    # Xử lý code blocks
-    text = re.sub(r'```([\s\S]*?)```', lambda m: '```' + m.group(1).replace('\\', '\\\\') + '```', text)
-    
     text = re.sub(r"\\\[", "@->@", text)
     text = re.sub(r"\\\]", "@<-@", text)
     text = re.sub(r"\\\(", "@-->@", text)
@@ -99,16 +86,25 @@ def escape(text, flag=0):
     text = re.sub(r"\\", r"\\\\", text)
     if flag:
         text = re.sub(r"\@{3}", r"\\\\", text)
+    text = re.sub(r"_", "\_", text)
     text = re.sub(r"\*{2}(.*?)\*{2}", "@@@\\1@@@", text)
     text = re.sub(r"\n{1,2}\*\s", "\n\n• ", text)
+    text = re.sub(r"\*", "\*", text)
     text = re.sub(r"\@{3}(.*?)\@{3}", "*\\1*", text)
     text = re.sub(r"\!?\[(.*?)\]\((.*?)\)", "@@@\\1@@@^^^\\2^^^", text)
+    text = re.sub(r"\[", "\[", text)
+    text = re.sub(r"\]", "\]", text)
+    text = re.sub(r"\(", "\(", text)
+    text = re.sub(r"\)", "\)", text)
     text = re.sub(r"\@\-\>\@", "\[", text)
     text = re.sub(r"\@\<\-\@", "\]", text)
     text = re.sub(r"\@\-\-\>\@", "\(", text)
     text = re.sub(r"\@\<\-\-\@", "\)", text)
     text = re.sub(r"\@{3}(.*?)\@{3}\^{3}(.*?)\^{3}", "[\\1](\\2)", text)
+    text = re.sub(r"~", "\~", text)
+    text = re.sub(r">", "\>", text)
     text = replace_all(text, r"(^#+\s.+?$)|```[\D\d\s]+?```", escapeshape)
+    text = re.sub(r"#", "\#", text)
     text = replace_all(
         text, r"(\+)|\n[\s]*-\s|```[\D\d\s]+?```|`[\D\d\s]*?`", escapeplus
     )
@@ -120,7 +116,12 @@ def escape(text, flag=0):
     text = re.sub(r"```([\D\d\s]+?)```", "@@@\\1@@@", text)
     text = replace_all(text, r"(``)", escapebackquote)
     text = re.sub(r"\@{3}([\D\d\s]+?)\@{3}", "```\\1```", text)
-    
+    text = re.sub(r"=", "\=", text)
+    text = re.sub(r"\|", "\|", text)
+    text = re.sub(r"{", "\{", text)
+    text = re.sub(r"}", "\}", text)
+    text = re.sub(r"\.", "\.", text)
+    text = re.sub(r"!", "\!", text)
     return text
 
 def update_current_time():
