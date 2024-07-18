@@ -77,6 +77,19 @@ def escapebackquote(matchobj):
     return matchobj.group(0)
 
 def escape(text, flag=0):
+    # Xử lý các ký tự đặc biệt trong Markdown
+    special_chars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!']
+    for char in special_chars:
+        text = text.replace(char, '\\' + char)
+    
+    # Xử lý các ký tự toán học phổ biến
+    math_chars = ['^', '√', '∑', '∫', '∏', '≈', '≠', '≤', '≥', '±', '∞', '∂', '∇', '∆']
+    for char in math_chars:
+        text = text.replace(char, '\\' + char)
+    
+    # Xử lý code blocks
+    text = re.sub(r'```([\s\S]*?)```', lambda m: '```' + m.group(1).replace('\\', '\\\\') + '```', text)
+    
     text = re.sub(r"\\\[", "@->@", text)
     text = re.sub(r"\\\]", "@<-@", text)
     text = re.sub(r"\\\(", "@-->@", text)
@@ -86,25 +99,16 @@ def escape(text, flag=0):
     text = re.sub(r"\\", r"\\\\", text)
     if flag:
         text = re.sub(r"\@{3}", r"\\\\", text)
-    text = re.sub(r"_", "\_", text)
     text = re.sub(r"\*{2}(.*?)\*{2}", "@@@\\1@@@", text)
     text = re.sub(r"\n{1,2}\*\s", "\n\n• ", text)
-    text = re.sub(r"\*", "\*", text)
     text = re.sub(r"\@{3}(.*?)\@{3}", "*\\1*", text)
     text = re.sub(r"\!?\[(.*?)\]\((.*?)\)", "@@@\\1@@@^^^\\2^^^", text)
-    text = re.sub(r"\[", "\[", text)
-    text = re.sub(r"\]", "\]", text)
-    text = re.sub(r"\(", "\(", text)
-    text = re.sub(r"\)", "\)", text)
     text = re.sub(r"\@\-\>\@", "\[", text)
     text = re.sub(r"\@\<\-\@", "\]", text)
     text = re.sub(r"\@\-\-\>\@", "\(", text)
     text = re.sub(r"\@\<\-\-\@", "\)", text)
     text = re.sub(r"\@{3}(.*?)\@{3}\^{3}(.*?)\^{3}", "[\\1](\\2)", text)
-    text = re.sub(r"~", "\~", text)
-    text = re.sub(r">", "\>", text)
     text = replace_all(text, r"(^#+\s.+?$)|```[\D\d\s]+?```", escapeshape)
-    text = re.sub(r"#", "\#", text)
     text = replace_all(
         text, r"(\+)|\n[\s]*-\s|```[\D\d\s]+?```|`[\D\d\s]*?`", escapeplus
     )
@@ -116,12 +120,7 @@ def escape(text, flag=0):
     text = re.sub(r"```([\D\d\s]+?)```", "@@@\\1@@@", text)
     text = replace_all(text, r"(``)", escapebackquote)
     text = re.sub(r"\@{3}([\D\d\s]+?)\@{3}", "```\\1```", text)
-    text = re.sub(r"=", "\=", text)
-    text = re.sub(r"\|", "\|", text)
-    text = re.sub(r"{", "\{", text)
-    text = re.sub(r"}", "\}", text)
-    text = re.sub(r"\.", "\.", text)
-    text = re.sub(r"!", "\!", text)
+    
     return text
 
 def update_current_time():
@@ -154,7 +153,7 @@ def check_spam(user_id):
     last_message_time[user_id] = current_time
     return True
 
-def generate_response(prompt, max_retries=5):
+def generate_response(prompt, max_retries=10):
     retries = 0
     while retries < max_retries:
         try:
@@ -166,9 +165,7 @@ def generate_response(prompt, max_retries=5):
             print(f"Generation error (attempt {retries + 1}): {e}")
             retries += 1
             if retries < max_retries:
-                wait_time = 2 ** retries + random.uniform(0, 1)
-                print(f"Retrying in {wait_time:.2f} seconds...")
-                time.sleep(wait_time)
+                time.sleep(1)
             else:
                 print("Max retries reached. Giving up.")
                 return None
@@ -181,13 +178,21 @@ def process_message(message, formatted_question, user_id):
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
     sent_message = bot.reply_to(message, "Đang suy nghĩ...")
+    bot.send_chat_action(message.chat.id, 'typing')
     response = generate_response(full_prompt)
 
     if response:
-        bot.edit_message_text(escape(response), chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
-        add_to_chat_history(user_id, "AI", response)
+        try:
+            bot.edit_message_text("Đang xử lý câu hỏi...", chat_id=message.chat.id, message_id=sent_message.message_id)
+            escaped_response = escape(response)
+            bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+            add_to_chat_history(user_id, "AI", response)
+        except telebot.apihelper.ApiException as e:
+            print(f"Error sending message: {e}")
+            bot.edit_message_text("Xin lỗi, tui gặp vấn đề khi định dạng câu trả lời. Đây là câu trả lời không định dạng:\n\n" + response, chat_id=message.chat.id, message_id=sent_message.message_id)
+            add_to_chat_history(user_id, "AI", response)
     else:
-        bot.edit_message_text("Xin lỗi, tôi đang gặp khó khăn trong việc xử lý yêu cầu của bạn. Vui lòng thử lại sau.", chat_id=message.chat.id, message_id=sent_message.message_id)
+        bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau ...", chat_id=message.chat.id, message_id=sent_message.message_id)
 
 @bot.message_handler(commands=['start'])
 def handle_start(message):
@@ -210,7 +215,7 @@ def handle_ask(message):
         return
 
     bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"{first_name}nói: {question}"
+    formatted_question = f"{first_name} nói: {question}"
     process_message(message, formatted_question, user_id)
 
 @bot.message_handler(commands=['clear'])
@@ -256,6 +261,7 @@ def handle_photo(message):
         new_file.write(downloaded_file)
 
     img = PIL.Image.open('received_photo.png')
+    sent_message = bot.reply_to(message, "Đang xử lý ảnh...")
     bot.send_chat_action(message.chat.id, 'typing')
 
     try:
@@ -264,9 +270,10 @@ def handle_photo(message):
         response = model.generate_content(["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
-        bot.reply_to(message, escape(response.text), parse_mode='MarkdownV2')
+        escaped_response = escape(response.text)
+        bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
     except Exception as e:
-        bot.reply_to(message, 'Dịch vụ không phản hồi, vui lòng thử lại sau.')
+        bot.edit_message_text('Dịch vụ không phản hồi, vui lòng thử lại sau.', chat_id=message.chat.id, message_id=sent_message.message_id)
 
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
