@@ -1,4 +1,5 @@
 import telebot
+from telebot.async_telebot import AsyncTeleBot
 import google.generativeai as genai
 import PIL.Image
 import time
@@ -7,7 +8,8 @@ from datetime import datetime, timedelta
 import re
 import psutil
 import platform
-import requests
+import asyncio
+import aiohttp
 import socket
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
@@ -19,7 +21,7 @@ GOOGLE_API_KEYS = [
     'AIzaSyA57KzCXO2H6NhQASTy4uYl9Vd1QgNPK3I'
 ]
 
-bot = telebot.TeleBot(BOT_TOKEN)
+bot = AsyncTeleBot(BOT_TOKEN)
 
 current_time = datetime.now()
 last_message_time = {}
@@ -48,7 +50,7 @@ training_instruction = """
 Bạn tên là Hydra, một trợ lý AI tiên tiến được tạo ra bởi Wyn dựa trên API của Gemini Pro.
 Nhiệm vụ của bạn là:
 1. Trả lời câu hỏi một cách đầy đủ, chi tiết và chính xác nhất có thể. "human" và "AI" chính là lời trò chuyện của bạn và người dùng, cố gắng không lặp lại hoặc nói trong cuộc trò chuyện.
-2. Thể hiện sự thân thiện và đồng cảm như một người bạn thân thiết. Avatar của bạn là một chú mèo mướp đang đội mũ cối
+2. Thể hiện sự thân thiện và đồng cảm như một người bạn thân thiết.
 3. Sử dụng ngôn ngữ phù hợp bắt trend với người đối thoại, tùy thuộc vào độ tuổi và ngữ cảnh, ngôn ngữ trẻ trung tuổi teen tí, đừng quá cứng nhắt, thêm chút nhây nhây càng tốt.
 4. Khuyến khích tư duy phản biện và cung cấp thông tin đa chiều khi cần thiết.
 5. Thừa nhận giới hạn kiến thức của mình và sẵn sàng học hỏi từ người dùng.
@@ -158,46 +160,46 @@ def check_spam(user_id):
     last_message_time[user_id] = current_time
     return True
 
-def generate_response(prompt, max_retries=10):
+async def generate_response(prompt, max_retries=10):
     retries = 0
     while retries < max_retries:
         try:
             genai.configure(api_key=get_random_api_key())
             model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-            response = model.generate_content(prompt, safety_settings=safety_settings)
+            response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
             return response.text
         except Exception as e:
             print(f"Generation error (attempt {retries + 1}): {e}")
             retries += 1
             if retries < max_retries:
-                time.sleep(1)
+                await asyncio.sleep(1)
             else:
                 print("Max retries reached. Giving up.")
                 return None
 
-def process_message(message, formatted_question, user_id):
+async def process_message(message, formatted_question, user_id):
     update_current_time()
     add_to_chat_history(user_id, "Human", formatted_question)
 
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    sent_message = bot.reply_to(message, "Đang suy nghĩ...")
-    bot.send_chat_action(message.chat.id, 'typing')
-    response = generate_response(full_prompt)
+    sent_message = await bot.reply_to(message, "Đang suy nghĩ...")
+    await bot.send_chat_action(message.chat.id, 'typing')
+    response = await generate_response(full_prompt)
 
     if response:
         try:
-            bot.edit_message_text("Đang xử lý câu hỏi...", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await bot.edit_message_text("Đang xử lý câu hỏi...", chat_id=message.chat.id, message_id=sent_message.message_id)
             escaped_response = escape(response)
-            bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+            await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
             add_to_chat_history(user_id, "AI", response)
-        except telebot.apihelper.ApiException as e:
+        except Exception as e:
             print(f"Error sending message: {e}")
-            bot.edit_message_text("\n" + response, chat_id=message.chat.id, message_id=sent_message.message_id)
+            await bot.edit_message_text("\n" + response, chat_id=message.chat.id, message_id=sent_message.message_id)
             add_to_chat_history(user_id, "AI", response)
     else:
-        bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau ...", chat_id=message.chat.id, message_id=sent_message.message_id)
+        await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau ...", chat_id=message.chat.id, message_id=sent_message.message_id)
 
 def get_system_info():
     cpu = platform.processor()
@@ -208,56 +210,59 @@ def get_system_info():
     os_info = f"{platform.system()} {platform.release()}"
     return cpu, cpu_cores, cpu_threads, ram, disk, os_info
 
-def ping_server(url):
+async def ping_server(url):
     try:
-        response = requests.get(url, timeout=5)
-        return response.elapsed.total_seconds() * 1000  # Convert to milliseconds
-    except requests.RequestException:
+        async with aiohttp.ClientSession() as session:
+            start_time = time.time()
+            async with session.get(url, timeout=5) as response:
+                end_time = time.time()
+                return (end_time - start_time) * 1000  # Convert to milliseconds
+    except Exception:
         return None
 
 @bot.message_handler(commands=['start'])
-def handle_start(message):
+async def handle_start(message):
     update_current_time()
     first_name = message.from_user.first_name
-    bot.reply_to(message, f'Xin chào, {first_name}! Tôi là Hydra, một trợ lý ảo thông minh được tạo ra bởi Wyn. Tôi có thể giúp bạn trả lời nhiều câu hỏi khác nhau, đa lĩnh vực. Hãy hỏi tôi bất cứ điều gì, tôi sẽ cố gắng để trả lời cho bạn🥰🥰')
+    await bot.reply_to(message, f'Xin chào, {first_name}! Tôi là Hydra, một trợ lý ảo thông minh được tạo ra bởi Wyn. Tôi có thể giúp bạn trả lời nhiều câu hỏi khác nhau, đa lĩnh vực. Hãy hỏi tôi bất cứ điều gì, tôi sẽ cố gắng để trả lời cho bạn🥰🥰')
 
 @bot.message_handler(commands=['ask'])
-def handle_ask(message):
+async def handle_ask(message):
     user_id = message.from_user.id
 
     if not check_spam(user_id):
-        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        await bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
 
     first_name = message.from_user.first_name
     question = message.text[len('/ask '):].strip()
     if not question:
-        bot.reply_to(message, 'Bạn cần nhập câu hỏi sau lệnh /ask.')
+        await bot.reply_to(message, 'Bạn cần nhập câu hỏi sau lệnh /ask.')
         return
 
-    bot.send_chat_action(message.chat.id, 'typing')
+    await bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name} nói: {question}"
-    process_message(message, formatted_question, user_id)
+    await process_message(message, formatted_question, user_id)
 
 @bot.message_handler(commands=['clear'])
-def handle_clear(message):
+async def handle_clear(message):
     update_current_time()
     user_id = message.from_user.id
     if user_id in chat_history:
         del chat_history[user_id]
-    bot.reply_to(message, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
+    await bot.reply_to(message, 'Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.')
 
 @bot.message_handler(commands=['info'])
-def handle_info(message):
+async def handle_info(message):
     update_current_time()
     cpu, cpu_cores, cpu_threads, ram, disk, os_info = get_system_info()
-    telegram_ping = ping_server('https://api.telegram.org')
-    gemini_ping = ping_server('https://generativelanguage.googleapis.com')
+    telegram_ping = await ping_server('https://api.telegram.org')
+    gemini_ping = await ping_server('https://generativelanguage.googleapis.com')
 
     info_message = (
-        "HYDRA AI\n"
-        f"Ping/Pong API Telegram: {telegram_ping:.2f}ms\n"
-        f"Ping/Pong API Gemini: {gemini_ping:.2f}ms\n"
+        "TELEGRAM BOT\n"
+        f"Ping đến API Telegram: {telegram_ping:.2f}ms\n"
+        f"Ping đến API Gemini: {gemini_ping:.2f}ms\n"
         f"CPU: {cpu}\n"
         f"Số nhân, số luồng: {cpu_cores}, {cpu_threads}\n"
         f"Ram: {ram} MB\n"
@@ -266,79 +271,82 @@ def handle_info(message):
         "Tình trạng: 200 OK"
     )
 
-    bot.reply_to(message, info_message)
+    await bot.reply_to(message, info_message)
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
-def handle_reply(message):
+async def handle_reply(message):
     user_id = message.from_user.id
 
     if not check_spam(user_id):
-        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        await bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
 
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
-        bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
+        await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
         return
 
-    bot.send_chat_action(message.chat.id, 'typing')
+    await bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name} nói: {question}"
-    process_message(message, formatted_question, user_id)
+    await process_message(message, formatted_question, user_id)
 
 @bot.message_handler(content_types=['photo'])
-def handle_photo(message):
+async def handle_photo(message):
     update_current_time()
     user_id = message.from_user.id
 
     if not check_spam(user_id):
-        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        await bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
 
     file_id = message.photo[-1].file_id
-    file_info = bot.get_file(file_id)
-    downloaded_file = bot.download_file(file_info.file_path)
+    file_info = await bot.get_file(file_id)
+    downloaded_file = await bot.download_file(file_info.file_path)
 
     with open('received_photo.png', 'wb') as new_file:
         new_file.write(downloaded_file)
 
     img = PIL.Image.open('received_photo.png')
-    sent_message = bot.reply_to(message, "Đang xử lý ảnh...")
-    bot.send_chat_action(message.chat.id, 'typing')
+    sent_message = await bot.reply_to(message, "Đang xử lý ảnh...")
+    await bot.send_chat_action(message.chat.id, 'typing')
 
     try:
         genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-        response = model.generate_content(["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
+        response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         escaped_response = escape(response.text)
-        bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+        await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
     except Exception as e:
-        bot.edit_message_text('Dịch vụ không phản hồi, vui lòng thử lại sau.', chat_id=message.chat.id, message_id=sent_message.message_id)
+        await bot.edit_message_text('Dịch vụ không phản hồi, vui lòng thử lại sau.', chat_id=message.chat.id, message_id=sent_message.message_id)
 
 @bot.message_handler(func=lambda message: True)
-def handle_all_messages(message):
+async def handle_all_messages(message):
     user_id = message.from_user.id
 
     if not check_spam(user_id):
-        bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        await bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
         return
 
     first_name = message.from_user.first_name
     question = message.text.strip()
     if not question:
-        bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
+        await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
         return
 
-    bot.send_chat_action(message.chat.id, 'typing')
+    await bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name} nói: {question}"
-    process_message(message, formatted_question, user_id)
+    await process_message(message, formatted_question, user_id)
 
-if __name__ == "__main__":
+async def main():
     while True:
         try:
-            bot.polling(none_stop=True)
+            await bot.polling(none_stop=True)
         except Exception as e:
             print(f"Bot polling error: {e}")
-            time.sleep(15)
+            await asyncio.sleep(15)
+
+if __name__ == "__main__":
+    asyncio.run(main())
