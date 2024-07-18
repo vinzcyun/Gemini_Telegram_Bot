@@ -162,7 +162,7 @@ async def generate_response(prompt, max_retries=10):
     while retries < max_retries:
         try:
             genai.configure(api_key=get_random_api_key())
-            model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
+            model = genai.GenerativeModel(model_name="gemini-1.5-pro")
             response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
             return response.text
         except Exception as e:
@@ -196,7 +196,7 @@ async def process_message(message, formatted_question, user_id):
             await bot.edit_message_text("\n" + response, chat_id=message.chat.id, message_id=sent_message.message_id)
             add_to_chat_history(user_id, "AI", response)
     else:
-        await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau ...", chat_id=message.chat.id, message_id=sent_message.message_id)
+        await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau...", chat_id=message.chat.id, message_id=sent_message.message_id)
 
 def get_system_info():
     cpu = platform.processor()
@@ -310,8 +310,8 @@ async def handle_photo(message):
 
     try:
         genai.configure(api_key=get_random_api_key())
-        model = genai.GenerativeModel(model_name="gemini-1.5-pro-latest")
-        response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bro?", img], safety_settings=safety_settings)
+        model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+        response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         escaped_response = escape(response.text)
