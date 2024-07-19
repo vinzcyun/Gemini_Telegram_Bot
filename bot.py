@@ -321,7 +321,7 @@ async def handle_photo(message):
 
     try:
         genai.configure(api_key=get_random_api_key())
-        model = genai.GenerativeModel(model_name="gemini-pro-vision")
+        model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
