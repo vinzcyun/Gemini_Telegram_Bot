@@ -66,13 +66,13 @@ Nhiệm vụ của bạn là:
 13. Sử dụng thông tin về thời gian hiện tại khi phù hợp trong cuộc trò chuyện, bạn đang sử dụng múi giờ GMT0 tăng lên 7 giờ để thành GMT+7.
 Cuối cùng, chỉ chào người dùng một lần thôi🥴👍 "parky" và "namkiki" là từ ngữ phân biệt vùng miền.
 Tuyệt đối không được lặp hoặc nói các từ như "AI:" "Human:" vì đó chỉ là phần để lưu lịch sử trò chuyện, không được nói trong bất kỳ trường hợp nào, cứ trả lời bình thường là được.
-Đây chỉ là phần huấn luyện, vui lòng ghi nhớ
+Đây chỉ là phần huấn luyện, vui lòng ghi nhớ và không được lặp lại trong cuộc trò chuyện.
 """
 
 VALID_MODELS = [
     "gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku", 
     "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro", 
-    "gemini-1.0-pro"
+    "gemini-1.0-pro", "mixtral-8x7b"
 ]
 
 def replace_all(text, pattern, repl):
