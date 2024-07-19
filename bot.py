@@ -24,10 +24,14 @@ GOOGLE_API_KEYS = [
 
 bot = AsyncTeleBot(BOT_TOKEN)
 
-current_time = datetime.now()
+current_time = datetime.now() + timedelta(hours=7)
 last_message_time = {}
 chat_history = {}
 current_model = "gemini-1.5-flash-latest"
+training_instruction = """
+Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn, cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được😊😊🥰🥰
+"""
+user_training_instructions = {}
 
 safety_settings = [
     {
@@ -47,10 +51,6 @@ safety_settings = [
         "threshold": "BLOCK_NONE"
     },
 ]
-
-training_instruction = """
-Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn, cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được😊😊🥰🥰
-"""
 
 VALID_MODELS = [
     "gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku", 
@@ -123,7 +123,7 @@ def escape(text, flag=0):
 
 def update_current_time():
     global current_time
-    current_time = datetime.now()
+    current_time = datetime.now() + timedelta(hours=7)
 
 def get_random_api_key():
     return random.choice(GOOGLE_API_KEYS)
@@ -176,7 +176,8 @@ async def process_message(message, formatted_question, user_id):
     add_to_chat_history(user_id, "Human", formatted_question)
 
     history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+    instruction = user_training_instructions.get(user_id, training_instruction)
+    full_prompt = f"{instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
     sent_message = await bot.reply_to(message, "Đang suy nghĩ...")
     await bot.send_chat_action(message.chat.id, 'typing')
@@ -285,7 +286,7 @@ async def handle_switch(message):
     keyboard = telebot.types.InlineKeyboardMarkup()
     for model in VALID_MODELS:
         keyboard.add(telebot.types.InlineKeyboardButton(text=model, callback_data=model))
-    await bot.reply_to(message, "Chọn mô hình AI:", reply_markup=keyboard)
+    await bot.reply_to(message, "Chọn mô hình AI và nhập câu huấn luyện tùy chỉnh nếu có:", reply_markup=keyboard)
 
 @bot.callback_query_handler(func=lambda call: True)
 async def handle_model_switch(call):
@@ -294,11 +295,23 @@ async def handle_model_switch(call):
     selected_model = call.data
     if selected_model in VALID_MODELS:
         current_model = selected_model
-        if user_id in chat_history:
-            del chat_history[user_id]
-        await bot.send_message(call.message.chat.id, f"Đã chuyển đổi mô hình AI sang {selected_model}. Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.")
+        await bot.send_message(call.message.chat.id, "Bạn có muốn nhập câu huấn luyện tùy chỉnh không? (Nhập 'Không' để bỏ qua)")
+        await bot.register_next_step_handler_by_chat_id(call.message.chat.id, process_training_instruction, user_id)
     else:
         await bot.send_message(call.message.chat.id, "Mô hình không hợp lệ. Vui lòng thử lại.")
+
+async def process_training_instruction(message, user_id):
+    instruction = message.text.strip()
+    if instruction.lower() != 'không':
+        user_training_instructions[user_id] = instruction
+        await bot.send_message(message.chat.id, "Đã cập nhật câu huấn luyện tùy chỉnh.")
+    else:
+        user_training_instructions[user_id] = training_instruction
+        await bot.send_message(message.chat.id, "Sử dụng câu huấn luyện mặc định.")
+
+    if user_id in chat_history:
+        del chat_history[user_id]
+    await bot.send_message(message.chat.id, "Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.")
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 async def handle_reply(message):
@@ -374,7 +387,7 @@ async def handle_all_messages(message):
         else:
             await bot.reply_to(message, f"Không thể lấy thông tin cho địa chỉ IP {ip_address}.")
     else:
-        if not question:
+        if not_question:
             await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
             return
 
