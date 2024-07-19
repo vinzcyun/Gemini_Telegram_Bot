@@ -11,6 +11,7 @@ import platform
 import asyncio
 import aiohttp
 import socket
+from duckduckgo_search import DDGS
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
@@ -26,6 +27,7 @@ bot = AsyncTeleBot(BOT_TOKEN)
 current_time = datetime.now()
 last_message_time = {}
 chat_history = {}
+current_model = "gemini-1.5-flash-latest"
 
 safety_settings = [
     {
@@ -164,10 +166,13 @@ async def generate_response(prompt, max_retries=10):
     retries = 0
     while retries < max_retries:
         try:
-            genai.configure(api_key=get_random_api_key())
-            model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
-            response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
-            return response.text
+            if current_model == "gemini-1.5-flash-latest":
+                genai.configure(api_key=get_random_api_key())
+                model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
+                response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
+                return response.text
+            else:
+                return chat_with_ai(prompt, model=current_model)
         except Exception as e:
             print(f"Generation error (attempt {retries + 1}): {e}")
             retries += 1
@@ -228,6 +233,11 @@ async def get_ip_info(ip_address):
             else:
                 return None
 
+def chat_with_ai(query, model='gpt-3.5'):
+    with DDGS() as ddgs:
+        response = ddgs.chat(keywords=query, model=model)
+        return response
+
 @bot.message_handler(commands=['start'])
 async def handle_start(message):
     update_current_time()
@@ -280,6 +290,16 @@ async def handle_info(message):
     )
 
     await bot.reply_to(message, info_message)
+
+@bot.message_handler(commands=['switch'])
+async def handle_switch(message):
+    global current_model
+    model = message.text[len('/switch '):].strip()
+    if model in ["gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku", "llama-3-70b"]:
+        current_model = model
+        await bot.reply_to(message, f"Đã chuyển đổi mô hình AI sang {model}.")
+    else:
+        await bot.reply_to(message, "Mô hình không hợp lệ. Các mô hình hợp lệ là: gemini-1.5-flash-latest, gpt-3.5, claude-3-haiku, llama-3-70b.")
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 async def handle_reply(message):
@@ -340,11 +360,11 @@ async def handle_all_messages(message):
 
     first_name = message.from_user.first_name
     question = message.text.strip()
-    
+
     # Cải thiện pattern để nhận diện IP address trong câu
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
     ip_match = re.search(ip_pattern, question)
-    
+
     if ip_match:
         ip_address = ip_match.group()
         ip_info = await get_ip_info(ip_address)
