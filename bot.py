@@ -49,7 +49,7 @@ safety_settings = [
 ]
 
 training_instruction = """
-Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn.
+Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn dựa trên API của Google Gemini và Meta Llama-3-70b.
 Nhiệm vụ của bạn là:
 1. Trả lời câu hỏi một cách đầy đủ, chi tiết và chính xác nhất có thể. "Human:" và "AI:" chính là lời trò chuyện của bạn và người dùng, cố gắng không lặp lại hoặc nói trong cuộc trò chuyện.
 2. Thể hiện sự thân thiện và đồng cảm như một người bạn thân thiết.
@@ -68,6 +68,12 @@ Cuối cùng, chỉ chào người dùng một lần thôi🥴👍 "parky" và "
 Tuyệt đối không được lặp hoặc nói các từ như "AI:" "Human:" vì đó chỉ là phần để lưu lịch sử trò chuyện, không được nói trong bất kỳ trường hợp nào, cứ trả lời bình thường là được.
 Đây chỉ là phần huấn luyện, vui lòng ghi nhớ
 """
+
+VALID_MODELS = [
+    "gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku", 
+    "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro", 
+    "gemini-1.0-pro"
+]
 
 def replace_all(text, pattern, repl):
     return re.sub(pattern, repl, text)
@@ -166,9 +172,9 @@ async def generate_response(prompt, max_retries=10):
     retries = 0
     while retries < max_retries:
         try:
-            if current_model == "gemini-1.5-flash-latest":
+            if current_model.startswith("gemini"):
                 genai.configure(api_key=get_random_api_key())
-                model = genai.GenerativeModel(model_name="gemini-1.5-flash-latest")
+                model = genai.GenerativeModel(model_name=current_model)
                 response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
                 return response.text
             else:
@@ -293,13 +299,23 @@ async def handle_info(message):
 
 @bot.message_handler(commands=['switch'])
 async def handle_switch(message):
+    keyboard = telebot.types.InlineKeyboardMarkup()
+    for model in VALID_MODELS:
+        keyboard.add(telebot.types.InlineKeyboardButton(text=model, callback_data=model))
+    await bot.reply_to(message, "Chọn mô hình AI:", reply_markup=keyboard)
+
+@bot.callback_query_handler(func=lambda call: True)
+async def handle_model_switch(call):
     global current_model
-    model = message.text[len('/switch '):].strip()
-    if model in ["gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku", "llama-3-70b"]:
-        current_model = model
-        await bot.reply_to(message, f"Đã chuyển đổi mô hình AI sang {model}.")
+    user_id = call.from_user.id
+    selected_model = call.data
+    if selected_model in VALID_MODELS:
+        current_model = selected_model
+        if user_id in chat_history:
+            del chat_history[user_id]
+        await bot.send_message(call.message.chat.id, f"Đã chuyển đổi mô hình AI sang {selected_model}. Đoạn chat đã được đặt lại. Hãy bắt đầu lại câu hỏi mới.")
     else:
-        await bot.reply_to(message, "Mô hình không hợp lệ. Các mô hình hợp lệ là: gemini-1.5-flash-latest, gpt-3.5, claude-3-haiku, llama-3-70b.")
+        await bot.send_message(call.message.chat.id, "Mô hình không hợp lệ. Vui lòng thử lại.")
 
 @bot.message_handler(func=lambda message: message.reply_to_message is not None)
 async def handle_reply(message):
