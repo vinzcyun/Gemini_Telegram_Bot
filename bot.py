@@ -1,4 +1,3 @@
-# ChatBot Telegarm by Wyn
 import telebot
 from telebot.async_telebot import AsyncTeleBot
 import google.generativeai as genai
@@ -221,6 +220,14 @@ async def ping_server(url):
     except Exception:
         return None
 
+async def get_ip_info(ip_address):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://api.ipapi.is/?q={ip_address}") as response:
+            if response.status == 200:
+                return await response.json()
+            else:
+                return None
+
 @bot.message_handler(commands=['start'])
 async def handle_start(message):
     update_current_time()
@@ -333,13 +340,25 @@ async def handle_all_messages(message):
 
     first_name = message.from_user.first_name
     question = message.text.strip()
-    if not question:
-        await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
-        return
+    
+    # Check if the message is an IP address
+    ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
+    if re.match(ip_pattern, question):
+        ip_info = await get_ip_info(question)
+        if ip_info:
+            await bot.send_chat_action(message.chat.id, 'typing')
+            formatted_question = f"{first_name} đã gửi địa chỉ IP: {question}. Đây là thông tin về IP đó: {ip_info}"
+            await process_message(message, formatted_question, user_id)
+        else:
+            await bot.reply_to(message, "Không thể lấy thông tin cho địa chỉ IP này.")
+    else:
+        if not question:
+            await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
+            return
 
-    await bot.send_chat_action(message.chat.id, 'typing')
-    formatted_question = f"{first_name} nói: {question}"
-    await process_message(message, formatted_question, user_id)
+        await bot.send_chat_action(message.chat.id, 'typing')
+        formatted_question = f"{first_name} nói: {question}"
+        await process_message(message, formatted_question, user_id)
 
 async def main():
     while True:
