@@ -24,7 +24,6 @@ GOOGLE_API_KEYS = [
 
 bot = AsyncTeleBot(BOT_TOKEN)
 
-current_time = datetime.now()
 last_message_time = {}
 chat_history = {}
 current_model = "gemini-1.5-flash-latest"
@@ -34,7 +33,7 @@ safety_settings = [
         "category": "HARM_CATEGORY_HARASSMENT",
         "threshold": "BLOCK_NONE"
     },
-    {   
+    {
         "category": "HARM_CATEGORY_HATE_SPEECH",
         "threshold": "BLOCK_NONE"
     },
@@ -53,8 +52,8 @@ Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn, cố gắn
 """
 
 VALID_MODELS = [
-    "gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku", 
-    "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro", 
+    "gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku",
+    "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro",
     "gemini-1.0-pro", "mixtral-8x7b"
 ]
 
@@ -123,7 +122,7 @@ def escape(text, flag=0):
 
 def update_current_time():
     global current_time
-    current_time = datetime.now()
+    current_time = datetime.now() + timedelta(hours=7)
 
 def get_random_api_key():
     return random.choice(GOOGLE_API_KEYS)
