@@ -341,16 +341,19 @@ async def handle_all_messages(message):
     first_name = message.from_user.first_name
     question = message.text.strip()
     
-    # Check if the message is an IP address
+    # Cải thiện pattern để nhận diện IP address trong câu
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
-    if re.match(ip_pattern, question):
-        ip_info = await get_ip_info(question)
+    ip_match = re.search(ip_pattern, question)
+    
+    if ip_match:
+        ip_address = ip_match.group()
+        ip_info = await get_ip_info(ip_address)
         if ip_info:
             await bot.send_chat_action(message.chat.id, 'typing')
-            formatted_question = f"{first_name} đã gửi địa chỉ IP: {question}. Đây là thông tin về IP đó: {ip_info}"
+            formatted_question = f"{first_name} đã hỏi về địa chỉ IP: {ip_address}. Đây là thông tin về IP đó: {ip_info}"
             await process_message(message, formatted_question, user_id)
         else:
-            await bot.reply_to(message, "Không thể lấy thông tin cho địa chỉ IP này.")
+            await bot.reply_to(message, f"Không thể lấy thông tin cho địa chỉ IP {ip_address}.")
     else:
         if not question:
             await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
