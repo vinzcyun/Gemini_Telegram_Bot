@@ -1,3 +1,4 @@
+# ChatBot Telegarm by Wyn
 import telebot
 from telebot.async_telebot import AsyncTeleBot
 import google.generativeai as genai
