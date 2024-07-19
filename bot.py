@@ -261,11 +261,11 @@ async def handle_info(message):
     gemini_ping = await ping_server('https://generativelanguage.googleapis.com')
 
     info_message = (
-        "TELEGRAM BOT\n"
+        "HYDRA AI\n"
         f"Ping/Pong API Telegram: {telegram_ping:.2f}ms\n"
         f"Ping/Pong API Gemini: {gemini_ping:.2f}ms\n"
         f"CPU: {cpu}\n"
-        f"Số nhân {cpu_cores}\nSố luồng, {cpu_threads}\n"
+        f"Số nhân: {cpu_cores}\nSố luồng: {cpu_threads}\n"
         f"Ram: {ram} MB\n"
         f"Bộ nhớ trong: {disk} GB\n"
         f"Hệ điều hành: {os_info}\n"
