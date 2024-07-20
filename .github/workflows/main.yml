@@ -26,7 +26,7 @@ jobs:
         sudo apt update -y
         pip install telebot && pip install asyncio
         pip install google.generativeai
-        pip install pillow && pip install psutil && pip install aiohttp && pip install duckduckgo-search
+        pip install pillow && pip install psutil && pip install aiohttp && pip install duckduckgo-search && pip install qrcode
 
     - name: Run the bot
       run: python3 bot.py
