@@ -131,9 +131,10 @@ def get_random_api_key():
     return random.choice(GOOGLE_API_KEYS)
 
 def get_chat_history(user_id):
-    if user_id not in chat_history:
+    if (history := chat_history.get(user_id)) is None:
         chat_history[user_id] = []
-    return chat_history[user_id]
+        history = chat_history[user_id]
+    return history
 
 def add_to_chat_history(user_id, role, content):
     history = get_chat_history(user_id)
@@ -174,9 +175,13 @@ async def generate_response(prompt, max_retries=10):
                 return None
 
 async def search_web(query):
-    results = ddgs.text(keywords=query, region="vi-vn", safesearch="moderate", timelimit=None, max_results=5)
-    search_results = "\n\n".join([f"{i+1}. {result['title']}\n   URL: {result['href']}\n   Description: {result['body']}" for i, result in enumerate(results)])
-    return search_results
+    try:
+        results = ddgs.text(keywords=query, region="vi-vn", safesearch="moderate", timelimit=5, max_results=5)
+        search_results = "\n\n".join([f"{i+1}. {result['title']}\n   URL: {result['href']}\n   Description: {result['body']}" for i, result in enumerate(results)])
+        return search_results
+    except Exception as e:
+        print(f"Error during web search: {e}")
+        return None
 
 async def process_message(message, formatted_question, user_id, search=False):
     update_current_time()
@@ -186,20 +191,25 @@ async def process_message(message, formatted_question, user_id, search=False):
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
     if search:
-        sent_message = await bot.reply_to(message, "Đang tìm kiếm trên web...")
+        sent_message = await bot.reply_to(message, "🌐 Đang tìm kiếm trên web...")
         search_results = await search_web(formatted_question)
         if search_results:
             full_prompt += f"\n\nKết quả tìm kiếm trên web:\n{search_results}"
+            await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await asyncio.sleep(3)
+            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
         else:
-            full_prompt += "\n\nKhông tìm thấy kết quả tìm kiếm trên web."
+            await bot.edit_message_text("🌐 Không thể tìm kiếm trên web, bỏ qua tìm kiếm.", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await asyncio.sleep(3)
+            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
 
-    sent_message = await bot.reply_to(message, "Đang suy nghĩ...")
+    sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
     await bot.send_chat_action(message.chat.id, 'typing')
     response = await generate_response(full_prompt)
 
     if response:
         try:
-            await bot.edit_message_text("Đang xử lý câu hỏi...", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await bot.edit_message_text("💭 Đang xử lý câu hỏi...", chat_id=message.chat.id, message_id=sent_message.message_id)
             escaped_response = escape(response)
             await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
             add_to_chat_history(user_id, "AI", response)
@@ -352,7 +362,7 @@ async def handle_photo(message):
         new_file.write(downloaded_file)
 
     img = PIL.Image.open('received_photo.png')
-    sent_message = await bot.reply_to(message, "Đang xử lý ảnh...")
+    sent_message = await bot.reply_to(message, "💭 Đang xử lý ảnh...")
     await bot.send_chat_action(message.chat.id, 'typing')
 
     try:
@@ -364,6 +374,7 @@ async def handle_photo(message):
         escaped_response = escape(response.text)
         await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
     except Exception as e:
+        print(f"Error processing photo: {e}")
         await bot.edit_message_text('Dịch vụ không phản hồi, vui lòng thử lại sau.', chat_id=message.chat.id, message_id=sent_message.message_id)
 
 @bot.message_handler(func=lambda message: True)
@@ -383,13 +394,19 @@ async def handle_all_messages(message):
 
     if ip_match:
         ip_address = ip_match.group()
+        await bot.send_chat_action(message.chat.id, 'typing')
+        sent_message = await bot.reply_to(message, "🌐 Đang kiểm tra IP...")
         ip_info = await get_ip_info(ip_address)
         if ip_info:
-            await bot.send_chat_action(message.chat.id, 'typing')
+            await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await asyncio.sleep(3)
+            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
             formatted_question = f"{first_name} đã hỏi về địa chỉ IP: {ip_address}. Đây là thông tin về IP đó: {ip_info}"
             await process_message(message, formatted_question, user_id)
         else:
-            await bot.reply_to(message, f"Không thể lấy thông tin cho địa chỉ IP {ip_address}.")
+            await bot.edit_message_text(f"🌐 Không thể lấy thông tin cho địa chỉ IP {ip_address}.", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await asyncio.sleep(3)
+            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
     else:
         if not question:
             await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
