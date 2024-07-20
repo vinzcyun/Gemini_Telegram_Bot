@@ -47,8 +47,8 @@ safety_settings = [
     },
 ]
 
-training_instruction = """Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn.
-Cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được, xưng hô với người dùng "tui" và "bro" trong cuộc trò chuyện.😊😊🥰🥰
+training_instruction = """
+😊😊🥰🥰
 """
 
 VALID_MODELS = [
