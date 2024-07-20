@@ -52,7 +52,7 @@ Cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được,
 """
 
 VALID_MODELS = [
-    "gemini-1.5-flash-latest", "gpt-3.5", "claude-3-haiku",
+    "gemini-1.5-flash-latest", "gpt-3.5",
     "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro",
     "gemini-1.0-pro", "mixtral-8x7b"
 ]
