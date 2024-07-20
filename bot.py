@@ -183,22 +183,21 @@ async def process_message(message, formatted_question, user_id, search=False):
     add_to_chat_history(user_id, "Human", formatted_question)
 
     history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+    full_prompt = f"{training_instruction}\n\nThời gian hiện tại:{current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+
+    sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
+    await bot.send_chat_action(message.chat.id, 'typing')
 
     if search:
-        sent_message = await bot.reply_to(message, "🌐 Đang tìm kiếm trên web...")
+        await bot.edit_message_text("🌐 Đang tìm kiếm trên web...", chat_id=message.chat.id, message_id=sent_message.message_id)
         search_results = await search_web(formatted_question)
         if search_results:
             full_prompt += f"\n\nKết quả tìm kiếm trên web:\n{search_results}"
         else:
             full_prompt += "\n\nKhông tìm thấy kết quả tìm kiếm trên web."
-
         await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
         await asyncio.sleep(2)
-        await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
 
-    sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
-    await bot.send_chat_action(message.chat.id, 'typing')
     response = await generate_response(full_prompt)
 
     if response:
@@ -389,6 +388,7 @@ async def handle_all_messages(message):
     if ip_match:
         ip_address = ip_match.group()
         sent_message = await bot.reply_to(message, "💭 Đang kiểm tra IP...")
+        await bot.send_chat_action(message.chat.id, 'typing')
         ip_info = await get_ip_info(ip_address)
         if ip_info:
             await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
@@ -403,9 +403,11 @@ async def handle_all_messages(message):
             await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
             return
 
+        sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
         await bot.send_chat_action(message.chat.id, 'typing')
         formatted_question = f"{first_name} nói: {question}"
         search = any(keyword in question.lower() for keyword in SEARCH_KEYWORDS)
+        await bot.edit_message_text("🌐 Đang tìm kiếm trên web...", chat_id=message.chat.id, message_id=sent_message.message_id)
         await process_message(message, formatted_question, user_id, search=search)
 
 async def main():
