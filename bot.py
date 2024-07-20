@@ -48,7 +48,6 @@ safety_settings = [
 ]
 
 training_instruction = """
-😊😊🥰🥰
 """
 
 VALID_MODELS = [
