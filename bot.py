@@ -10,7 +10,6 @@ import psutil
 import platform
 import asyncio
 import aiohttp
-import socket
 from duckduckgo_search import DDGS
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
@@ -56,6 +55,10 @@ VALID_MODELS = [
     "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro",
     "gemini-1.0-pro", "mixtral-8x7b"
 ]
+
+SEARCH_KEYWORDS = ["tìm", "web", "search", "kiếm", "là"]
+
+ddgs = DDGS()
 
 def replace_all(text, pattern, repl):
     return re.sub(pattern, repl, text)
@@ -170,12 +173,25 @@ async def generate_response(prompt, max_retries=10):
                 print("Max retries reached. Giving up.")
                 return None
 
-async def process_message(message, formatted_question, user_id):
+async def search_web(query):
+    results = ddgs.text(keywords=query, region="vi-vn", safesearch="moderate", timelimit=None, max_results=5)
+    search_results = "\n\n".join([f"{i+1}. {result['title']}\n   URL: {result['href']}\n   Description: {result['body']}" for i, result in enumerate(results)])
+    return search_results
+
+async def process_message(message, formatted_question, user_id, search=False):
     update_current_time()
     add_to_chat_history(user_id, "Human", formatted_question)
 
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+
+    if search:
+        sent_message = await bot.reply_to(message, "Đang tìm kiếm trên web...")
+        search_results = await search_web(formatted_question)
+        if search_results:
+            full_prompt += f"\n\nKết quả tìm kiếm trên web:\n{search_results}"
+        else:
+            full_prompt += "\n\nKhông tìm thấy kết quả tìm kiếm trên web."
 
     sent_message = await bot.reply_to(message, "Đang suy nghĩ...")
     await bot.send_chat_action(message.chat.id, 'typing')
@@ -248,7 +264,8 @@ async def handle_ask(message):
 
     await bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name} nói: {question}"
-    await process_message(message, formatted_question, user_id)
+    search = any(keyword in question.lower() for keyword in SEARCH_KEYWORDS)
+    await process_message(message, formatted_question, user_id, search=search)
 
 @bot.message_handler(commands=['clear'])
 async def handle_clear(message):
@@ -315,7 +332,8 @@ async def handle_reply(message):
 
     await bot.send_chat_action(message.chat.id, 'typing')
     formatted_question = f"{first_name} nói: {question}"
-    await process_message(message, formatted_question, user_id)
+    search = any(keyword in question.lower() for keyword in SEARCH_KEYWORDS)
+    await process_message(message, formatted_question, user_id, search=search)
 
 @bot.message_handler(content_types=['photo'])
 async def handle_photo(message):
@@ -379,7 +397,8 @@ async def handle_all_messages(message):
 
         await bot.send_chat_action(message.chat.id, 'typing')
         formatted_question = f"{first_name} nói: {question}"
-        await process_message(message, formatted_question, user_id)
+        search = any(keyword in question.lower() for keyword in SEARCH_KEYWORDS)
+        await process_message(message, formatted_question, user_id, search=search)
 
 async def main():
     while True:
