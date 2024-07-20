@@ -186,7 +186,8 @@ async def process_message(message, formatted_question, user_id, search=False):
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
     sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
-    
+    await bot.send_chat_action(message.chat.id, 'typing')
+
     if search:
         await bot.edit_message_text("🌐 Đang tìm kiếm trên web...", chat_id=message.chat.id, message_id=sent_message.message_id)
         search_results = await search_web(formatted_question)
@@ -194,15 +195,19 @@ async def process_message(message, formatted_question, user_id, search=False):
             full_prompt += f"\n\nKết quả tìm kiếm trên web:\n{search_results}"
         else:
             full_prompt += "\n\nKhông tìm thấy kết quả tìm kiếm trên web."
+        await bot.edit_message_text("💭 Đang suy nghĩ...", chat_id=message.chat.id, message_id=sent_message.message_id)
 
     response = await generate_response(full_prompt)
 
     if response:
-        escaped_response = escape(response)
-        await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
-        await asyncio.sleep(2)
-        await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
-        add_to_chat_history(user_id, "AI", response)
+        try:
+            escaped_response = escape(response)
+            await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+            add_to_chat_history(user_id, "AI", response)
+        except Exception as e:
+            print(f"Error sending message: {e}")
+            await bot.send_message(message.chat.id, response)
+            add_to_chat_history(user_id, "AI", response)
     else:
         await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau...", chat_id=message.chat.id, message_id=sent_message.message_id)
 
@@ -358,8 +363,6 @@ async def handle_photo(message):
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         escaped_response = escape(response.text)
-        await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
-        await asyncio.sleep(2)
         await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
     except Exception as e:
         await bot.edit_message_text('Dịch vụ không phản hồi, vui lòng thử lại sau.', chat_id=message.chat.id, message_id=sent_message.message_id)
@@ -382,12 +385,12 @@ async def handle_all_messages(message):
     if ip_match:
         ip_address = ip_match.group()
         sent_message = await bot.reply_to(message, "💭 Đang kiểm tra IP...")
+        await bot.send_chat_action(message.chat.id, 'typing')
         ip_info = await get_ip_info(ip_address)
         if ip_info:
-            await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
-            await asyncio.sleep(2)
+            await bot.edit_message_text("💭 Đang suy nghĩ...", chat_id=message.chat.id, message_id=sent_message.message_id)
             formatted_question = f"{first_name} đã hỏi về địa chỉ IP: {ip_address}. Đây là thông tin về IP đó: {ip_info}"
-            await bot.edit_message_text(formatted_question, chat_id=message.chat.id, message_id=sent_message.message_id)
+            await process_message(message, formatted_question, user_id)
         else:
             await bot.edit_message_text("Không thể lấy thông tin cho địa chỉ IP này.", chat_id=message.chat.id, message_id=sent_message.message_id)
     else:
@@ -395,6 +398,7 @@ async def handle_all_messages(message):
             await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
             return
 
+        await bot.send_chat_action(message.chat.id, 'typing')
         formatted_question = f"{first_name} nói: {question}"
         search = any(keyword in question.lower() for keyword in SEARCH_KEYWORDS)
         await process_message(message, formatted_question, user_id, search=search)
