@@ -12,7 +12,7 @@ import psutil
 import platform
 import asyncio
 import aiohttp
-from duckduckgo_search import DDGS, chat as ddg_chat
+from duckduckgo_search import DDGS
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
