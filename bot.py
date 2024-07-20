@@ -47,7 +47,8 @@ safety_settings = [
     },
 ]
 
-training_instruction = """
+training_instruction = """Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn.
+Cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được, xưng hô với người dùng "tui" và "bro" trong cuộc trò chuyện.😊😊🥰🥰
 """
 
 VALID_MODELS = [
@@ -171,10 +172,10 @@ async def generate_response(prompt, max_retries=10):
 
 async def process_message(message, formatted_question, user_id):
     update_current_time()
-    add_to_chat_history(user_id, "'{first_name}'", formatted_question)
+    add_to_chat_history(user_id, "Human", formatted_question)
 
     history = get_chat_history(user_id)
-    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\n'{first_name}': {formatted_question}\nAI:"
+    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
     sent_message = await bot.reply_to(message, "Đang suy nghĩ...")
     await bot.send_chat_action(message.chat.id, 'typing')
@@ -340,7 +341,7 @@ async def handle_photo(message):
         genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
         response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
-        add_to_chat_history(user_id, "'{first_name}'", "Gửi một bức ảnh")
+        add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         escaped_response = escape(response.text)
         await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
@@ -377,7 +378,7 @@ async def handle_all_messages(message):
             return
 
         await bot.send_chat_action(message.chat.id, 'typing')
-        formatted_question = f"'{first_name}': {question}"
+        formatted_question = f"{first_name} nói: {question}"
         await process_message(message, formatted_question, user_id)
 
 async def main():
