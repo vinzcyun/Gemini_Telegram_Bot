@@ -131,10 +131,9 @@ def get_random_api_key():
     return random.choice(GOOGLE_API_KEYS)
 
 def get_chat_history(user_id):
-    if (history := chat_history.get(user_id)) is None:
+    if user_id not in chat_history:
         chat_history[user_id] = []
-        history = chat_history[user_id]
-    return history
+    return chat_history[user_id]
 
 def add_to_chat_history(user_id, role, content):
     history = get_chat_history(user_id)
@@ -219,6 +218,45 @@ async def process_message(message, formatted_question, user_id, search=False):
             add_to_chat_history(user_id, "AI", response)
     else:
         await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau...", chat_id=message.chat.id, message_id=sent_message.message_id)
+
+async def handle_all_messages(message):
+    user_id = message.from_user.id
+
+    if not check_spam(user_id):
+        await bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
+        return
+
+    first_name = message.from_user.first_name
+    question = message.text.strip()
+
+    # Cải thiện pattern để nhận diện IP address trong câu
+    ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
+    ip_match = re.search(ip_pattern, question)
+
+    if ip_match:
+        ip_address = ip_match.group()
+        await bot.send_chat_action(message.chat.id, 'typing')
+        sent_message = await bot.reply_to(message, "🌐 Đang kiểm tra IP...")
+        ip_info = await get_ip_info(ip_address)
+        if ip_info:
+            await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await asyncio.sleep(3)
+            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
+            formatted_question = f"{first_name} đã hỏi về địa chỉ IP: {ip_address}. Đây là thông tin về IP đó: {ip_info}"
+            await process_message(message, formatted_question, user_id)
+        else:
+            await bot.edit_message_text(f"🌐 Không thể lấy thông tin cho địa chỉ IP {ip_address}.", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await asyncio.sleep(3)
+            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
+    else:
+        if not question:
+            await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
+            return
+
+        await bot.send_chat_action(message.chat.id, 'typing')
+        formatted_question = f"{first_name} nói: {question}"
+        search = any(keyword in question.lower() for keyword in SEARCH_KEYWORDS)
+        await process_message(message, formatted_question, user_id, search=search)
 
 def get_system_info():
     cpu = platform.processor()
@@ -368,7 +406,7 @@ async def handle_photo(message):
     try:
         genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-        response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
+        response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bro?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         escaped_response = escape(response.text)
