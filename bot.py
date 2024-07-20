@@ -159,11 +159,6 @@ async def generate_response(prompt, max_retries=10):
                 model = genai.GenerativeModel(model_name=current_model)
                 response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
                 return response.text
-            elif current_model == "claude-3-haiku":
-                genai.configure(api_key=get_random_api_key())
-                model = genai.GenerativeModel(model_name=current_model)
-                response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
-                return response.text
             else:
                 return chat_with_ai(prompt, model=current_model)
         except Exception as e:
@@ -180,10 +175,7 @@ async def process_message(message, formatted_question, user_id):
     add_to_chat_history(user_id, "Human", formatted_question)
 
     history = get_chat_history(user_id)
-    if current_model == "claude-3-haiku":
-        full_prompt = formatted_question
-    else:
-        full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
+    full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
     sent_message = await bot.reply_to(message, "Đang suy nghĩ...")
     await bot.send_chat_action(message.chat.id, 'typing')
@@ -348,7 +340,7 @@ async def handle_photo(message):
     try:
         genai.configure(api_key=get_random_api_key())
         model = genai.GenerativeModel(model_name="gemini-1.5-flash")
-        response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bro?", img], safety_settings=safety_settings)
+        response = await asyncio.to_thread(model.generate_content, ["Đây là bức ảnh gì bri?", img], safety_settings=safety_settings)
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         escaped_response = escape(response.text)
@@ -392,7 +384,7 @@ async def handle_all_messages(message):
 async def main():
     while True:
         try:
-            bot.polling(none_stop=True)
+            await bot.polling(none_stop=True)
         except Exception as e:
             print(f"Bot polling error: {e}")
             await asyncio.sleep(15)
