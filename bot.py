@@ -47,7 +47,7 @@ safety_settings = [
 ]
 
 training_instruction = """Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn.
-Cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được, xưng hô với người dùng "tui" và "bro" trong cuộc trò chuyện. Khi người dùng yêu cầu liên kết "link" hãy đưa cho người dùng.😊😊🥰🥰
+Cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được, xưng hô với người dùng "tui" và "bro" trong cuộc trò chuyện. Khi người dùng yêu cầu liên kết "link" hãy đưa cho người dùng. Các kết quả tìm kiếm chỉ giúp bạn tìm kiếm thông tin và hiểu hơn😊😊🥰🥰
 """
 
 VALID_MODELS = [
@@ -56,7 +56,7 @@ VALID_MODELS = [
     "gemini-1.0-pro", "mixtral-8x7b"
 ]
 
-SEARCH_KEYWORDS = ["tìm", "web", "search", "kiếm", "là"]
+SEARCH_KEYWORDS = ["tìm", "web", "search", "kiếm", "là", "kết", "kq", "mở", "so", "phim"]
 
 ddgs = DDGS()
 
