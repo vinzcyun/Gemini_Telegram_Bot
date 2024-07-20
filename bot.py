@@ -2,6 +2,8 @@ import telebot
 from telebot.async_telebot import AsyncTeleBot
 import google.generativeai as genai
 import PIL.Image
+import PIL.ImageDraw
+import qrcode
 import time
 import random
 from datetime import datetime, timedelta
@@ -10,7 +12,7 @@ import psutil
 import platform
 import asyncio
 import aiohttp
-from duckduckgo_search import DDGS
+from duckduckgo_search import DDGS, chat as ddg_chat
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
@@ -53,7 +55,7 @@ Cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được,
 VALID_MODELS = [
     "gemini-1.5-flash-latest", "gpt-3.5",
     "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro",
-    "gemini-1.0-pro", "mixtral-8x7b"
+    "gemini-1.0-pro", "mixtral-8x7b", "claude-3-haiku"
 ]
 
 SEARCH_KEYWORDS = ["tìm", "web", "search", "kiếm", "kết", "kq", "mở", "so", "phim"]
@@ -162,6 +164,9 @@ async def generate_response(prompt, max_retries=10):
                 model = genai.GenerativeModel(model_name=current_model)
                 response = await asyncio.to_thread(model.generate_content, prompt, safety_settings=safety_settings)
                 return response.text
+            elif current_model == "claude-3-haiku":
+                response = ddg_chat(prompt, model="claude-3-haiku")
+                return response['text']
             else:
                 return chat_with_ai(prompt, model=current_model)
         except Exception as e:
@@ -185,31 +190,40 @@ async def process_message(message, formatted_question, user_id, search=False):
     history = get_chat_history(user_id)
     full_prompt = f"{training_instruction}\n\nThời gian hiện tại: {current_time.strftime('%Y-%m-%d %H:%M:%S')}\n\nLịch sử trò chuyện:\n{format_chat_history(history)}\n\nHuman: {formatted_question}\nAI:"
 
-    sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
-    await bot.send_chat_action(message.chat.id, 'typing')
+    if current_model != "claude-3-haiku":
+        sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
+        await bot.send_chat_action(message.chat.id, 'typing')
 
-    if search:
-        await bot.edit_message_text("🌐 Đang tìm kiếm trên web...", chat_id=message.chat.id, message_id=sent_message.message_id)
-        search_results = await search_web(formatted_question)
-        if search_results:
-            full_prompt += f"\n\nKết quả tìm kiếm trên web:\n{search_results}"
+        if search:
+            await bot.edit_message_text("🌐 Đang tìm kiếm trên web...", chat_id=message.chat.id, message_id=sent_message.message_id)
+            search_results = await search_web(formatted_question)
+            if search_results:
+                full_prompt += f"\n\nKết quả tìm kiếm trên web:\n{search_results}"
+            else:
+                full_prompt += "\n\nKhông tìm thấy kết quả tìm kiếm trên web."
+            await bot.edit_message_text("💭 Đang suy nghĩ...", chat_id=message.chat.id, message_id=sent_message.message_id)
+
+        response = await generate_response(full_prompt)
+
+        if response:
+            try:
+                escaped_response = escape(response)
+                await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+                add_to_chat_history(user_id, "AI", response)
+            except Exception as e:
+                print(f"Error sending message: {e}")
+                await bot.send_message(message.chat.id, response)
+                add_to_chat_history(user_id, "AI", response)
         else:
-            full_prompt += "\n\nKhông tìm thấy kết quả tìm kiếm trên web."
-        await bot.edit_message_text("💭 Đang suy nghĩ...", chat_id=message.chat.id, message_id=sent_message.message_id)
-
-    response = await generate_response(full_prompt)
-
-    if response:
-        try:
-            escaped_response = escape(response)
-            await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
-            add_to_chat_history(user_id, "AI", response)
-        except Exception as e:
-            print(f"Error sending message: {e}")
-            await bot.send_message(message.chat.id, response)
-            add_to_chat_history(user_id, "AI", response)
+            await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau...", chat_id=message.chat.id, message_id=sent_message.message_id)
     else:
-        await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau...", chat_id=message.chat.id, message_id=sent_message.message_id)
+        response = await generate_response(formatted_question)
+        if response:
+            escaped_response = escape(response)
+            await bot.reply_to(message, escaped_response, parse_mode='MarkdownV2')
+            add_to_chat_history(user_id, "AI", response)
+        else:
+            await bot.reply_to(message, "Dịch vụ không phản hồi, vui lòng thử lại sau...")
 
 def get_system_info():
     cpu = platform.processor()
@@ -242,6 +256,19 @@ def chat_with_ai(query, model='gpt-3.5'):
     with DDGS() as ddgs:
         response = ddgs.chat(keywords=query, model=model)
         return response
+
+def create_qr_code(url):
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image(fill='black', back_color='white')
+    img.save('qrcode.png')
+    return 'qrcode.png'
 
 @bot.message_handler(commands=['start'])
 async def handle_start(message):
@@ -382,6 +409,10 @@ async def handle_all_messages(message):
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
     ip_match = re.search(ip_pattern, question)
 
+    # Kiểm tra nếu câu hỏi chứa từ khóa "qr" và một liên kết web
+    qr_pattern = r'\bqr\b.*\bhttps?://[^\s]+'
+    qr_match = re.search(qr_pattern, question, re.IGNORECASE)
+
     if ip_match:
         ip_address = ip_match.group()
         sent_message = await bot.reply_to(message, "💭 Đang kiểm tra IP...")
@@ -393,6 +424,12 @@ async def handle_all_messages(message):
             await process_message(message, formatted_question, user_id)
         else:
             await bot.edit_message_text("Không thể lấy thông tin cho địa chỉ IP này.", chat_id=message.chat.id, message_id=sent_message.message_id)
+    elif qr_match:
+        url = re.search(r'https?://[^\s]+', question).group()
+        qr_code_path = create_qr_code(url)
+        await bot.reply_to(message, f"Đây là mã qr của bro được xuất từ trang web {url}", parse_mode='MarkdownV2')
+        with open(qr_code_path, 'rb') as qr_file:
+            await bot.send_photo(message.chat.id, qr_file)
     else:
         if not question:
             await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
