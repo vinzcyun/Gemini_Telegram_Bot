@@ -174,13 +174,9 @@ async def generate_response(prompt, max_retries=10):
                 return None
 
 async def search_web(query):
-    try:
-        results = ddgs.text(keywords=query, region="vi-vn", safesearch="moderate", timelimit=5, max_results=5)
-        search_results = "\n\n".join([f"{i+1}. {result['title']}\n   URL: {result['href']}\n   Description: {result['body']}" for i, result in enumerate(results)])
-        return search_results
-    except Exception as e:
-        print(f"Error during web search: {e}")
-        return None
+    results = ddgs.text(keywords=query, region="vi-vn", safesearch="moderate", timelimit=None, max_results=5)
+    search_results = "\n\n".join([f"{i+1}. {result['title']}\n   URL: {result['href']}\n   Description: {result['body']}" for i, result in enumerate(results)])
+    return search_results
 
 async def process_message(message, formatted_question, user_id, search=False):
     update_current_time()
@@ -194,13 +190,12 @@ async def process_message(message, formatted_question, user_id, search=False):
         search_results = await search_web(formatted_question)
         if search_results:
             full_prompt += f"\n\nKết quả tìm kiếm trên web:\n{search_results}"
-            await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
-            await asyncio.sleep(3)
-            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
         else:
-            await bot.edit_message_text("🌐 Không thể tìm kiếm trên web, bỏ qua tìm kiếm.", chat_id=message.chat.id, message_id=sent_message.message_id)
-            await asyncio.sleep(3)
-            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
+            full_prompt += "\n\nKhông tìm thấy kết quả tìm kiếm trên web."
+
+        await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
+        await asyncio.sleep(2)
+        await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
 
     sent_message = await bot.reply_to(message, "💭 Đang suy nghĩ...")
     await bot.send_chat_action(message.chat.id, 'typing')
@@ -208,55 +203,16 @@ async def process_message(message, formatted_question, user_id, search=False):
 
     if response:
         try:
-            await bot.edit_message_text("💭 Đang xử lý câu hỏi...", chat_id=message.chat.id, message_id=sent_message.message_id)
+            await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
             escaped_response = escape(response)
-            await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+            await bot.send_message(message.chat.id, escaped_response, parse_mode='MarkdownV2')
             add_to_chat_history(user_id, "AI", response)
         except Exception as e:
             print(f"Error sending message: {e}")
-            await bot.edit_message_text("\n" + response, chat_id=message.chat.id, message_id=sent_message.message_id)
+            await bot.send_message(message.chat.id, response)
             add_to_chat_history(user_id, "AI", response)
     else:
         await bot.edit_message_text("Dịch vụ không phản hồi, vui lòng thử lại sau...", chat_id=message.chat.id, message_id=sent_message.message_id)
-
-async def handle_all_messages(message):
-    user_id = message.from_user.id
-
-    if not check_spam(user_id):
-        await bot.reply_to(message, "Vui lòng đợi 10 giây trước khi gửi tin nhắn tiếp theo.")
-        return
-
-    first_name = message.from_user.first_name
-    question = message.text.strip()
-
-    # Cải thiện pattern để nhận diện IP address trong câu
-    ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
-    ip_match = re.search(ip_pattern, question)
-
-    if ip_match:
-        ip_address = ip_match.group()
-        await bot.send_chat_action(message.chat.id, 'typing')
-        sent_message = await bot.reply_to(message, "🌐 Đang kiểm tra IP...")
-        ip_info = await get_ip_info(ip_address)
-        if ip_info:
-            await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
-            await asyncio.sleep(3)
-            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
-            formatted_question = f"{first_name} đã hỏi về địa chỉ IP: {ip_address}. Đây là thông tin về IP đó: {ip_info}"
-            await process_message(message, formatted_question, user_id)
-        else:
-            await bot.edit_message_text(f"🌐 Không thể lấy thông tin cho địa chỉ IP {ip_address}.", chat_id=message.chat.id, message_id=sent_message.message_id)
-            await asyncio.sleep(3)
-            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
-    else:
-        if not question:
-            await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
-            return
-
-        await bot.send_chat_action(message.chat.id, 'typing')
-        formatted_question = f"{first_name} nói: {question}"
-        search = any(keyword in question.lower() for keyword in SEARCH_KEYWORDS)
-        await process_message(message, formatted_question, user_id, search=search)
 
 def get_system_info():
     cpu = platform.processor()
@@ -410,9 +366,9 @@ async def handle_photo(message):
         add_to_chat_history(user_id, "Human", "Gửi một bức ảnh")
         add_to_chat_history(user_id, "AI", f"Mô tả ảnh: {response.text}")
         escaped_response = escape(response.text)
-        await bot.edit_message_text(escaped_response, chat_id=message.chat.id, message_id=sent_message.message_id, parse_mode='MarkdownV2')
+        await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
+        await bot.send_message(message.chat.id, escaped_response, parse_mode='MarkdownV2')
     except Exception as e:
-        print(f"Error processing photo: {e}")
         await bot.edit_message_text('Dịch vụ không phản hồi, vui lòng thử lại sau.', chat_id=message.chat.id, message_id=sent_message.message_id)
 
 @bot.message_handler(func=lambda message: True)
@@ -432,19 +388,16 @@ async def handle_all_messages(message):
 
     if ip_match:
         ip_address = ip_match.group()
-        await bot.send_chat_action(message.chat.id, 'typing')
-        sent_message = await bot.reply_to(message, "🌐 Đang kiểm tra IP...")
+        sent_message = await bot.reply_to(message, "💭 Đang kiểm tra IP...")
         ip_info = await get_ip_info(ip_address)
         if ip_info:
             await bot.edit_message_text("✅ Hoàn thành", chat_id=message.chat.id, message_id=sent_message.message_id)
-            await asyncio.sleep(3)
-            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
             formatted_question = f"{first_name} đã hỏi về địa chỉ IP: {ip_address}. Đây là thông tin về IP đó: {ip_info}"
             await process_message(message, formatted_question, user_id)
         else:
-            await bot.edit_message_text(f"🌐 Không thể lấy thông tin cho địa chỉ IP {ip_address}.", chat_id=message.chat.id, message_id=sent_message.message_id)
-            await asyncio.sleep(3)
-            await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
+            await bot.edit_message_text("Không thể lấy thông tin cho địa chỉ IP này.", chat_id=message.chat.id, message_id=sent_message.message_id)
+        await asyncio.sleep(2)
+        await bot.delete_message(chat_id=message.chat.id, message_id=sent_message.message_id)
     else:
         if not question:
             await bot.reply_to(message, 'Bạn cần nhập câu hỏi.')
