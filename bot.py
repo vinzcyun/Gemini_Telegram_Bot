@@ -10,7 +10,7 @@ import psutil
 import platform
 import asyncio
 import aiohttp
-from duckduckgo_search import DDGS
+from duckduckgo_search import asyncDDGS
 
 BOT_TOKEN = '7163508623:AAE0a1Ho3fp7R7InbjW-P_mA02p9ghYUfXE'
 GOOGLE_API_KEYS = [
@@ -47,12 +47,14 @@ safety_settings = [
 ]
 
 training_instruction = """
+Bạn tên là Hydra, một trợ lý AI được tạo ra bởi Wyn.
+Cố gắng nói chuyện trẻ trung, tuổi teen và bắt trend là được, xưng hô với người dùng "tớ" và "bro" trong cuộc trò chuyện.  Các kết quả tìm kiếm chỉ giúp bạn tìm kiếm thông tin và hiểu hơn, hãy sử dụng đúng cách, hiển thị liên kết (link) khi người dùng yêu cầu.😊😊🥰🥰
 """
 
 VALID_MODELS = [
     "gemini-1.5-flash-latest", "gpt-3.5",
     "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro",
-    "gemini-1.0-pro", "mixtral-8x7b", "claude-3-haiku"
+    "gemini-1.0-pro", "mixtral-8x7b", "claude-3-haiku (Tạm đóng)"
 ]
 
 SEARCH_KEYWORDS = ["tìm", "web", "search", "kiếm", "kết", "kq", "mở", "so", "phim"]
