@@ -1,0 +1,8 @@
+telebot
+asyncio
+google-generativeai
+pillow
+psutil
+aiohttp
+duckduckgo-search
+qrcode
