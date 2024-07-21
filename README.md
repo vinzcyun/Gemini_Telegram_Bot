@@ -1,8 +1,7 @@
 
+# Gemini Telegram Bot
 
-# Hydra AI Telegram Bot
-
-Hydra AI is a versatile and intelligent Telegram bot built to provide context-aware responses, handle web searches, process images, and retrieve system information. Developed with a focus on natural language understanding, Hydra AI leverages Google's Gemini AI model and integrates various libraries for comprehensive functionality.
+Gemini Telegram Bot is a versatile and intelligent Telegram bot built to provide context-aware responses, handle web searches, process images, and retrieve system information. Developed with a focus on natural language understanding, Gemini Telegram Bot leverages Google's Gemini AI model and integrates various libraries for comprehensive functionality.
 
 ## Features
 
@@ -35,8 +34,8 @@ These dependencies are listed in the `requirements.txt` file.
 First, clone the repository to your local machine using Git:
 
 ```bash
-git clone https://github.com/yourusername/hydra-ai-telegram-bot.git
-cd hydra-ai-telegram-bot
+git clone https://github.com/yourusername/Gemini_Telegram_Bot.git
+cd Gemini_Telegram_Bot
 ```
 
 ### Step 2: Install Dependencies
@@ -137,13 +136,13 @@ To run the bot using Docker:
 1. **Build the Docker Image:**
 
     ```bash
-    docker build -t hydra-ai-telegram-bot .
+    docker build -t gemini-telegram-bot .
     ```
 
 2. **Run the Docker Container:**
 
     ```bash
-    docker run -d --name hydra-ai-bot hydra-ai-telegram-bot
+    docker run -d --name gemini-bot gemini-telegram-bot
     ```
 
 ## Deployment
@@ -202,8 +201,8 @@ We welcome contributions! Please fork the repository and submit pull requests.
 2. **Clone Your Fork**
 
     ```bash
-    git clone https://github.com/yourusername/hydra-ai-telegram-bot.git
-    cd hydra-ai-telegram-bot
+    git clone https://github.com/yourusername/Gemini_Telegram_Bot.git
+    cd Gemini_Telegram_Bot
     ```
 
 3. **Create a Branch**
@@ -236,6 +235,4 @@ For any questions or suggestions, please open an issue or contact the repository
 
 ---
 
-Thank you for using Hydra AI Telegram Bot! 😊
-```
-
+Thank you for using Gemini Telegram Bot! 😊
