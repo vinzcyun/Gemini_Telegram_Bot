@@ -158,19 +158,15 @@ To run the bot using Docker:
 
 ## Deployment
 
-### Heroku
 
 [![Deploy on Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
-### Railway
 
 [![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
 
-### Vercel
 
 [![Deploy on Vercel](https://vercel.com/button)](https://vercel.com/new)
 
-### Koyeb
 
 [![Deploy on Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy)
 
