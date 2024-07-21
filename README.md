@@ -35,7 +35,7 @@ These dependencies are listed in the `requirements.txt` file.
 First, clone the repository to your local machine using Git:
 
 ```bash
-git clone https://github.com/yourusername/Gemini_Telegram_Bot.git
+git clone https://github.com/{yourusername}/Gemini_Telegram_Bot.git
 cd Gemini_Telegram_Bot
 ```
 
@@ -135,8 +135,10 @@ The bot will begin polling for messages and respond accordingly.
 You can also run the bot on Google Colab. Use the following command to set up and run the bot:
 
 ```python
-!apt-get update && git clone https://github.com/yourusername/Gemini_Telegram_Bot.git && cd Gemini_Telegram_Bot && pip install -r requirements.txt && python bot.py
+!apt-get update && git clone https://github.com/{yourusername}/Gemini_Telegram_Bot.git && cd Gemini_Telegram_Bot && pip install -r requirements.txt && python bot.py
 ```
+
+**Note:** Running the bot on Google Colab is subject to Colab's session limits. Colab sessions typically expire after 12 hours of continuous usage, and the bot will stop running. Ensure you save your work frequently and restart the session if needed.
 
 ## Docker Setup
 
@@ -158,31 +160,6 @@ To run the bot using Docker:
 
 ### Heroku
 
-1. **Login to Heroku:**
-
-    ```bash
-    heroku login
-    ```
-
-2. **Create a New Heroku App:**
-
-    ```bash
-    heroku create your-app-name
-    ```
-
-3. **Deploy the Code:**
-
-    ```bash
-    git push heroku main
-    ```
-
-4. **Set Environment Variables:**
-
-    ```bash
-    heroku config:set BOT_TOKEN=your-telegram-bot-token
-    heroku config:set GOOGLE_API_KEYS=your-google-api-key-1,your-google-api-key-2
-    ```
-
 [![Deploy on Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
 
 ### Railway
@@ -191,17 +168,7 @@ To run the bot using Docker:
 
 ### Vercel
 
-1. **Login to Vercel:**
-
-    ```bash
-    vercel login
-    ```
-
-2. **Deploy the Project:**
-
-    ```bash
-    vercel --prod
-    ```
+[![Deploy on Vercel](https://vercel.com/button)](https://vercel.com/new)
 
 ### Koyeb
 
@@ -220,7 +187,7 @@ We welcome contributions! Please fork the repository and submit pull requests.
 2. **Clone Your Fork**
 
     ```bash
-    git clone https://github.com/yourusername/Gemini_Telegram_Bot.git
+    git clone https://github.com/vinzcyun/Gemini_Telegram_Bot.git
     cd Gemini_Telegram_Bot
     ```
 
