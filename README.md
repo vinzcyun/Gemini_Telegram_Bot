@@ -207,9 +207,6 @@ We welcome contributions! Please fork the repository and submit pull requests.
 
     Go to the original repository and create a pull request from your fork.
 
-## License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for more details.
 
 ## Contact
 
