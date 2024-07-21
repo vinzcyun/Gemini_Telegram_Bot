@@ -1,8 +1,8 @@
-name: Run Bot
+name: Run Python Bot
 
-on:
+on: 
   push:
-    branches:
+    branches: 
       - main
   pull_request:
     branches:
@@ -13,20 +13,18 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
+      - name: Checkout code
+        uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.x'
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.x'
 
-    - name: Update and install dependencies
-      run: |
-        sudo apt update -y
-        pip install telebot && pip install asyncio
-        pip install google.generativeai
-        pip install pillow && pip install psutil && pip install aiohttp && pip install duckduckgo-search && pip install qrcode
+      - name: Update and install dependencies
+        run: |
+          sudo apt update
+          pip install -r requirements.txt
 
-    - name: Run the bot
-      run: python3 bot.py
+      - name: Run the bot
+        run: python bot.py
