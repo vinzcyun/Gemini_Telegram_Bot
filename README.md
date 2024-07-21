@@ -1,4 +1,5 @@
 
+
 # Gemini Telegram Bot
 
 Gemini Telegram Bot is a versatile and intelligent Telegram bot built to provide context-aware responses, handle web searches, process images, and retrieve system information. Developed with a focus on natural language understanding, Gemini Telegram Bot leverages Google's Gemini AI model and integrates various libraries for comprehensive functionality.
@@ -129,6 +130,14 @@ The bot will begin polling for messages and respond accordingly.
 - **LICENSE:** License information.
 - **README.md:** This README file.
 
+## Running on Google Colab
+
+You can also run the bot on Google Colab. Use the following command to set up and run the bot:
+
+```python
+!apt-get update && git clone https://github.com/yourusername/Gemini_Telegram_Bot.git && cd Gemini_Telegram_Bot && pip install -r requirements.txt && python bot.py
+```
+
 ## Docker Setup
 
 To run the bot using Docker:
@@ -174,6 +183,12 @@ To run the bot using Docker:
     heroku config:set GOOGLE_API_KEYS=your-google-api-key-1,your-google-api-key-2
     ```
 
+[![Deploy on Heroku](https://www.herokucdn.com/deploy/button.svg)](https://heroku.com/deploy)
+
+### Railway
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app/new)
+
 ### Vercel
 
 1. **Login to Vercel:**
@@ -187,6 +202,10 @@ To run the bot using Docker:
     ```bash
     vercel --prod
     ```
+
+### Koyeb
+
+[![Deploy on Koyeb](https://www.koyeb.com/static/images/deploy/button.svg)](https://app.koyeb.com/deploy)
 
 ## Contributing
 
