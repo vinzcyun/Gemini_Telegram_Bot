@@ -215,4 +215,4 @@ For any questions or suggestions, please open an issue or contact the repository
 
 Thank you for using Gemini Telegram Bot! 😊
 
-### All files and scripts of this repo will no longer be updated.
+__All files and scripts of this repo will no longer be updated.__
