@@ -127,7 +127,6 @@ The bot will begin polling for messages and respond accordingly.
 - **Dockerfile:** Docker configuration for containerizing the application.
 - **Procfile:** Configuration for deploying to Heroku.
 - **vercel.json:** Configuration for deploying to Vercel.
-- **LICENSE:** License information.
 - **README.md:** This README file.
 
 ## Running on Google Colab
