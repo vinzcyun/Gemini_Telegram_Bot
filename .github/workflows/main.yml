@@ -1,4 +1,4 @@
-name: Run Multiple Scripts
+name: Run Python Bot
 
 on: 
   push:
@@ -9,7 +9,7 @@ on:
       - main
 
 jobs:
-  run-scripts:
+  run-bot:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,25 +21,10 @@ jobs:
         with:
           python-version: '3.x'
 
-      - name: Update and install Python dependencies
+      - name: Update and install dependencies
         run: |
           sudo apt update
           pip install -r requirements.txt
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: '^1.14.0'
-
-      - name: Update and install Go dependencies
-        run: |
-          go mod download
-
-      - name: Run ipconverter.py
-        run: python ipconverter.py
-
-      - name: Run scan.go
-        run: go run scan.go
-
-      - name: Run brute.py
-        run: python brute.py
+      - name: Run the bot
+        run: python bot.py
