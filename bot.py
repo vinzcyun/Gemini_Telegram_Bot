@@ -56,7 +56,7 @@ VALID_MODELS = [
     "gemini-1.0-pro", "mixtral-8x7b", "claude-3-haiku", "gpt-4o-mini", "llama-3.1-70b"
 ]
 
-SEARCH_KEYWORDS = ["tìm", "web", "search", "kiếm", "kết", "kq", "mở", "so", "phim"]
+SEARCH_KEYWORDS = ["tìm", "web", "search"]
 
 ddgs = DDGS()
 
