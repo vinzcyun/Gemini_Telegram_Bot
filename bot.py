@@ -49,7 +49,7 @@ safety_settings = [
 ]
 
 VALID_MODELS = [
-    "gemini-1.5-flash-latest", "gpt-4o-mini",
+    "gemini-1.5-flash-latest", "gemini-2.0-flash-exp", "gpt-4o-mini",
     "llama-3-70b", "gemini-1.5-pro-latest", "gemini-1.5-pro",
     "gemini-1.0-pro", "mixtral-8x7b", "claude-3-haiku", "gpt-3.5", "llama-3.1-70b",
     "lolillm-0.1-beta", "simsimi"
