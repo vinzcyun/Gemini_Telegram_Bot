@@ -15,7 +15,7 @@ from duckduckgo_search import DDGS
 from language import get_text
 import sqlite3
 
-BOT_TOKEN = 'your-telegram-api-key'
+BOT_TOKEN = 'your-telegram-bot-token'
 GOOGLE_API_KEYS = [
     'your-google-api-key-1',
     'your-google-api-key-2',
